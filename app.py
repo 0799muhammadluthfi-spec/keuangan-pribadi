@@ -148,7 +148,7 @@ if saldo_siap < 0:
 # ── INFO BULANAN ──
 gaji = get_gaji(df_pg)
 pengeluaran_tetap = hitung_pengeluaran_tetap_bulanan(df_pg)
-hasil_bersih = hitung_hasil_bersih_bulanan(df_pg)
+hasil_bersih = hitung_saldo_siap_pakai(df_kas, df_pg)
 sisa_hari = get_sisa_hari_bulan_ini()
 tabungan = get_tabungan(df_pg)
 
