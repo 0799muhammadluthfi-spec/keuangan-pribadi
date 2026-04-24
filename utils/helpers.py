@@ -199,10 +199,8 @@ def get_last_saldo(df_kas: pd.DataFrame):
             return 0.0, 0.0, 0.0, 0.0
 
         d = df_kas[df_kas["No"] != "-"].copy()
-
         if "Jenis_Transaksi" in d.columns:
             d = d[d["Jenis_Transaksi"] != "PENGECEKAN"]
-
         if d.empty:
             return 0.0, 0.0, 0.0, 0.0
 
@@ -213,9 +211,7 @@ def get_last_saldo(df_kas: pd.DataFrame):
         kas = to_float(last.get("Sisa_Kas_Di_Tangan", 0))
         atm = to_float(last.get("Sisa_ATM", 0))
         shopee = to_float(last.get("Sisa_Shopee", 0))
-        seluruh = kas + atm + shopee
-
-        return seluruh, kas, atm, shopee
+        return kas + atm + shopee, kas, atm, shopee
     except:
         return 0.0, 0.0, 0.0, 0.0
 
@@ -223,20 +219,35 @@ def hitung_ringkasan(df_kas: pd.DataFrame):
     try:
         if df_kas.empty:
             return 0.0, 0.0
-
         d = df_kas[df_kas["No"] != "-"].copy()
-
         if "Jenis_Transaksi" not in d.columns:
             return 0.0, 0.0
-
         d = d[d["Jenis_Transaksi"].isin(["MASUK", "KELUAR"])]
-
         total_masuk = d[d["Jenis_Transaksi"] == "MASUK"]["Nominal"].apply(to_float).sum()
         total_keluar = d[d["Jenis_Transaksi"] == "KELUAR"]["Nominal"].apply(to_float).sum()
-
         return total_masuk, total_keluar
     except:
         return 0.0, 0.0
+
+def hitung_pengeluaran_hari_ini(df_kas: pd.DataFrame) -> float:
+    try:
+        if df_kas.empty:
+            return 0.0
+        d = df_kas[df_kas["No"] != "-"].copy()
+        if "Jenis_Transaksi" not in d.columns or "Tanggal" not in d.columns:
+            return 0.0
+
+        hari_ini_str = today_wita().strftime("%d/%m/%Y")
+        d["Tgl_Bersih"] = d["Tanggal"].astype(str).str.strip().str.replace("-", "/", regex=False)
+
+        d_hari_ini = d[
+            (d["Tgl_Bersih"] == hari_ini_str) &
+            (d["Jenis_Transaksi"] == "KELUAR")
+        ]
+
+        return d_hari_ini["Nominal"].apply(to_float).sum()
+    except:
+        return 0.0
 
 # ==========================================
 # PENGATURAN
@@ -254,10 +265,7 @@ def get_pengaturan(df_pg: pd.DataFrame, jenis: str):
 
 def get_gaji(df_pg: pd.DataFrame) -> float:
     try:
-        d = df_pg[
-            (df_pg["Jenis"] == "GAJI") &
-            (df_pg["Status"] == "AKTIF")
-        ]
+        d = df_pg[(df_pg["Jenis"] == "GAJI") & (df_pg["Status"] == "AKTIF")]
         if d.empty:
             return 0.0
         return to_float(d.iloc[0]["Nominal"])
@@ -278,19 +286,15 @@ def hitung_pengeluaran_tetap_bulanan(df_pg: pd.DataFrame) -> float:
         d = get_pengaturan(df_pg, "PENGELUARAN")
         if d.empty:
             return 0.0
-
         total = 0.0
         jml_minggu = get_jumlah_minggu_bulan_ini()
-
         for _, row in d.iterrows():
             nominal = to_float(row.get("Nominal", 0))
             periode = str(row.get("Periode", "SEBULAN")).strip().upper()
-
             if periode == "SEMINGGU":
                 total += nominal * jml_minggu
             elif periode == "SEBULAN":
                 total += nominal
-
         return total
     except:
         return 0.0
@@ -300,27 +304,23 @@ def hitung_beban_belum_bayar(df_pg: pd.DataFrame) -> float:
         d = get_pengaturan(df_pg, "PENGELUARAN")
         if d.empty:
             return 0.0
-
         total = 0.0
         jml_minggu = get_jumlah_minggu_bulan_ini()
         bulan_ini = get_bulan_ini_str()
-
         for _, row in d.iterrows():
             nominal = to_float(row.get("Nominal", 0))
             periode = str(row.get("Periode", "SEBULAN")).strip().upper()
             bulan_bayar = str(row.get("Bulan_Bayar", "-")).strip()
             counter = int(to_float(row.get("Counter_Bayar", 0)))
-
             if periode == "SEBULAN":
                 if bulan_bayar != bulan_ini:
                     total += nominal
             elif periode == "SEMINGGU":
                 if bulan_bayar != bulan_ini:
                     counter = 0
-                sisa_bayar = jml_minggu - counter
-                if sisa_bayar > 0:
-                    total += nominal * sisa_bayar
-
+                sisa = jml_minggu - counter
+                if sisa > 0:
+                    total += nominal * sisa
         return total
     except:
         return 0.0
@@ -355,12 +355,41 @@ def hitung_batas_harian(df_kas, df_pg) -> float:
     try:
         saldo_siap = hitung_saldo_siap_pakai(df_kas, df_pg)
         sisa_hari = get_sisa_hari_bulan_ini()
-
         if sisa_hari > 0 and saldo_siap > 0:
             return saldo_siap / sisa_hari
         return 0.0
     except:
         return 0.0
+
+def hitung_sisa_batas_hari_ini(df_kas, df_pg) -> float:
+    try:
+        batas = hitung_batas_harian(df_kas, df_pg)
+        keluar_hari_ini = hitung_pengeluaran_hari_ini(df_kas)
+        return batas - keluar_hari_ini
+    except:
+        return 0.0
+
+def get_status_batas_harian(df_kas, df_pg):
+    try:
+        batas = hitung_batas_harian(df_kas, df_pg)
+        sisa = hitung_sisa_batas_hari_ini(df_kas, df_pg)
+        keluar = hitung_pengeluaran_hari_ini(df_kas)
+
+        if batas <= 0:
+            return "bahaya", "❌ Tidak ada budget harian!", batas, sisa, keluar
+
+        persen = (sisa / batas) * 100 if batas > 0 else 0
+
+        if sisa < 0:
+            return "bahaya", f"🚨 Melebihi batas harian! Over {rupiah(abs(sisa))}", batas, sisa, keluar
+        elif persen < 20:
+            return "merah", f"❌ Sisa batas tinggal {persen:.0f}% ({rupiah(sisa)})", batas, sisa, keluar
+        elif persen < 50:
+            return "kuning", f"⚠️ Sisa batas {persen:.0f}% ({rupiah(sisa)})", batas, sisa, keluar
+        else:
+            return "hijau", f"✅ Aman — sisa {persen:.0f}% ({rupiah(sisa)})", batas, sisa, keluar
+    except:
+        return "aman", "", 0, 0, 0
 
 # ==========================================
 # PENGECEKAN SELISIH
@@ -369,39 +398,17 @@ def get_selisih_aktif(df_cek: pd.DataFrame):
     try:
         if df_cek.empty:
             return False, 0.0, "-"
-
         d = df_cek[df_cek["No"] != "-"].copy()
         if d.empty:
             return False, 0.0, "-"
-
         d["_sort"] = pd.to_numeric(d["No"], errors="coerce")
         d = d.sort_values("_sort", ascending=True)
         last = d.iloc[-1]
-
         status = str(last.get("Status_Aktif", "TIDAK")).strip().upper()
         selisih = to_float(last.get("Selisih", 0))
         tgl = str(last.get("Tanggal", "-")).strip()
-
         if status == "YA" and abs(selisih) > 0.5:
             return True, selisih, tgl
         return False, 0.0, "-"
     except:
         return False, 0.0, "-"
-
-# ==========================================
-# WARNING BATAS HARIAN
-# ==========================================
-def cek_warning_harian(df_kas, df_pg):
-    try:
-        batas = hitung_batas_harian(df_kas, df_pg)
-
-        if batas <= 0:
-            return "bahaya", "❌ Saldo tidak mencukupi untuk sisa bulan ini!"
-        elif batas < 50000:
-            return "warning", (
-                f"⚠️ Batas harian tinggal **{rupiah(batas)}**. "
-                f"Pertimbangkan untuk mengurangi pengeluaran!"
-            )
-        return "aman", ""
-    except:
-        return "aman", ""
