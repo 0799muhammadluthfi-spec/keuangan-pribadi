@@ -6,9 +6,9 @@ from streamlit_gsheets import GSheetsConnection
 
 from utils.css_styles import inject_css, inject_opening_css, render_top_nav
 from utils.helpers import (
-    WS_KAS,
+    WS_KEUANGAN,
     WS_PENGATURAN,
-    KOLOM_KAS,
+    KOLOM_KEUANGAN,
     KOLOM_PENGATURAN,
     load_data,
     pastikan_kolom,
@@ -87,8 +87,8 @@ render_top_nav(active="home")
 # ==========================================
 # LOAD DATA
 # ==========================================
-df_kas = load_data(conn, WS_KAS)
-df_kas = pastikan_kolom(df_kas, KOLOM_KAS)
+df_kas = load_data(conn, WS_KEUANGAN)
+df_kas = pastikan_kolom(df_kas, KOLOM_KEUANGAN)
 
 df_pg = load_data(conn, WS_PENGATURAN)
 df_pg = pastikan_kolom(df_pg, KOLOM_PENGATURAN)
@@ -118,7 +118,7 @@ st.markdown(
 st.divider()
 
 # ==========================================
-# RINGKASAN SALDO
+# RINGKEUANGANAN SALDO
 # ==========================================
 last_seluruh, last_kas, last_atm, last_shopee = get_last_saldo(df_kas)
 total_masuk, total_keluar = hitung_ringkasan(df_kas)
