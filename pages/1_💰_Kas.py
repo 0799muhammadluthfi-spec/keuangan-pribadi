@@ -9,8 +9,13 @@ from utils.helpers import (
     tampilkan_n_terakhir, tombol_refresh,
     to_float, fmt_nominal, rupiah,
     get_last_saldo, hitung_ringkasan,
-    get_selisih_aktif, get_status_batas_harian,
-    get_sisa_hari_bulan_ini, today_wita
+    get_selisih_aktif,
+    hitung_saldo_siap_pakai,
+    hitung_pengeluaran_hari_ini,
+    get_sisa_hari_bulan_ini,
+    get_tabungan,
+    hitung_beban_belum_bayar,
+    today_wita
 )
 
 st.set_page_config(page_title="Keuangan | Keuangan Pribadi", page_icon="💰", layout="centered", initial_sidebar_state="collapsed")
@@ -49,15 +54,13 @@ r6.metric("🛒 Shopee", rupiah(last_shopee))
 
 st.divider()
 
-# ── WARNING BATAS HARIAN ──
+# ── BATAS HARIAN ──
 df_pg_batas = df_pg[(df_pg["Jenis"] == "SETTING") & (df_pg["Nama"] == "BATAS_HARIAN")]
 batas_aktif = False
 if not df_pg_batas.empty:
     batas_aktif = str(df_pg_batas.iloc[0]["Status"]).strip().upper() == "AKTIF"
 
 if batas_aktif:
-    from utils.helpers import hitung_saldo_siap_pakai, hitung_pengeluaran_hari_ini
-
     saldo_siap = hitung_saldo_siap_pakai(df_kas, df_pg)
     sisa_hari = get_sisa_hari_bulan_ini()
     keluar_val = hitung_pengeluaran_hari_ini(df_kas)
@@ -72,19 +75,16 @@ if batas_aktif:
 
     if batas_val <= 0:
         st.error("❌ Tidak ada budget harian tersisa!")
+    elif keluar_val <= 0:
+        st.success(f"✅ Belum ada pengeluaran hari ini. Batas penuh {rupiah(batas_val)}")
+    elif sisa_val < 0:
+        st.error(f"🚨 Melebihi batas harian sebesar {rupiah(abs(sisa_val))}")
+    elif (sisa_val / batas_val * 100) < 20:
+        st.error(f"❌ Sisa batas tinggal {rupiah(sisa_val)} ({sisa_val/batas_val*100:.0f}%)")
+    elif (sisa_val / batas_val * 100) < 50:
+        st.warning(f"⚠️ Sisa batas {rupiah(sisa_val)} ({sisa_val/batas_val*100:.0f}%)")
     else:
-        persen = (sisa_val / batas_val) * 100 if batas_val > 0 else 0
-
-        if keluar_val <= 0:
-            st.success(f"✅ Belum ada pengeluaran hari ini. Batas penuh {rupiah(batas_val)}")
-        elif sisa_val < 0:
-            st.error(f"🚨 Melebihi batas harian sebesar {rupiah(abs(sisa_val))}")
-        elif persen < 20:
-            st.error(f"❌ Sisa batas hari ini tinggal {rupiah(sisa_val)} ({persen:.0f}%)")
-        elif persen < 50:
-            st.warning(f"⚠️ Sisa batas hari ini {rupiah(sisa_val)} ({persen:.0f}%)")
-        else:
-            st.success(f"✅ Hari ini masih aman. Sisa batas {rupiah(sisa_val)} ({persen:.0f}%)")
+        st.success(f"✅ Masih aman. Sisa {rupiah(sisa_val)} ({sisa_val/batas_val*100:.0f}%)")
 
     st.divider()
 
@@ -92,9 +92,9 @@ if batas_aktif:
 ada, nilai, tgl = get_selisih_aktif(df_cek)
 if ada:
     if nilai > 0:
-        st.error(f"❌ **SELISIH: KURANG {rupiah(nilai)}** ({tgl})")
+        st.error(f"❌ SELISIH: KURANG {rupiah(nilai)} ({tgl})")
     else:
-        st.success(f"✅ **SELISIH: LEBIH {rupiah(abs(nilai))}** ({tgl})")
+        st.success(f"✅ SELISIH: LEBIH {rupiah(abs(nilai))} ({tgl})")
 
 # ── CEK SELISIH ──
 cek = st.toggle("🔎 Cek Selisih", value=False, key="toggle_cek")
@@ -207,7 +207,8 @@ with tab1:
                 "Sumber_Anggaran": sumber if jns == "KELUAR" else "-",
                 "Tujuan_Anggaran": tujuan if jns == "MASUK" else "-",
                 "Sisa_Kas_Di_Tangan": fmt_nominal(nk), "Sisa_ATM": fmt_nominal(na),
-                "Sisa_Shopee": fmt_nominal(ns), "Sisa_Kas_Seluruh": fmt_nominal(tt), "Catatan": "-"
+                "Sisa_Shopee": fmt_nominal(ns), "Sisa_Kas_Seluruh": fmt_nominal(tt),
+                "Catatan": "-"
             }
             df_b = pd.concat([df_kas, pd.DataFrame([row])], ignore_index=True)
             if safe_update(conn, WS_KAS, df_b):
