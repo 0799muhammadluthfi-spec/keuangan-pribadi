@@ -50,7 +50,7 @@ KOLOM_PENGECEKAN = [
 # ==========================================
 # FORMAT & KONVERSI
 # ==========================================
-def to_float(val) -> float:
+def to_float(val):
     try:
         txt = str(val).strip().replace(",", "")
         if txt in ["", "-", "nan", "None", "null", "<NA>"]:
@@ -59,7 +59,7 @@ def to_float(val) -> float:
     except:
         return 0.0
 
-def fmt_nominal(val) -> str:
+def fmt_nominal(val):
     try:
         num = float(val)
         if num == int(num):
@@ -68,7 +68,7 @@ def fmt_nominal(val) -> str:
     except:
         return "0"
 
-def rupiah(val) -> str:
+def rupiah(val):
     try:
         num = int(round(float(val)))
         if num < 0:
@@ -77,7 +77,7 @@ def rupiah(val) -> str:
     except:
         return "Rp 0"
 
-def format_tgl_indo(tgl_str) -> str:
+def format_tgl_indo(tgl_str):
     if not tgl_str or str(tgl_str).strip() in ["-", "nan", "", "None"]:
         return ""
     try:
@@ -93,29 +93,28 @@ def format_tgl_indo(tgl_str) -> str:
     except:
         return str(tgl_str)
 
-def get_jumlah_hari_bulan_ini() -> int:
-    hari_ini = today_wita()
-    return calendar.monthrange(hari_ini.year, hari_ini.month)[1]
+def get_jumlah_hari_bulan_ini():
+    h = today_wita()
+    return calendar.monthrange(h.year, h.month)[1]
 
-def get_sisa_hari_bulan_ini() -> int:
-    hari_ini = today_wita()
-    total = calendar.monthrange(hari_ini.year, hari_ini.month)[1]
-    return total - hari_ini.day + 1
+def get_sisa_hari_bulan_ini():
+    h = today_wita()
+    total = calendar.monthrange(h.year, h.month)[1]
+    return total - h.day + 1
 
-def get_bulan_ini_str() -> str:
-    hari_ini = today_wita()
-    return f"{hari_ini.year}-{hari_ini.month:02d}"
+def get_bulan_ini_str():
+    h = today_wita()
+    return f"{h.year}-{h.month:02d}"
 
-def get_jumlah_minggu_bulan_ini() -> int:
-    jumlah_hari = get_jumlah_hari_bulan_ini()
-    if jumlah_hari <= 28:
+def get_jumlah_minggu_bulan_ini():
+    if get_jumlah_hari_bulan_ini() <= 28:
         return 4
     return 5
 
 # ==========================================
 # DATAFRAME
 # ==========================================
-def get_empty_df(worksheet: str) -> pd.DataFrame:
+def get_empty_df(worksheet):
     if worksheet == WS_KAS:
         return pd.DataFrame(columns=KOLOM_KAS)
     if worksheet == WS_PENGATURAN:
@@ -124,13 +123,13 @@ def get_empty_df(worksheet: str) -> pd.DataFrame:
         return pd.DataFrame(columns=KOLOM_PENGECEKAN)
     return pd.DataFrame()
 
-def pastikan_kolom(df: pd.DataFrame, kolom_list: list) -> pd.DataFrame:
+def pastikan_kolom(df, kolom_list):
     for col in kolom_list:
         if col not in df.columns:
             df[col] = "-"
     return df
 
-def get_next_no(df: pd.DataFrame, col: str = "No") -> int:
+def get_next_no(df, col="No"):
     try:
         if df.empty or col not in df.columns:
             return 1
@@ -139,13 +138,13 @@ def get_next_no(df: pd.DataFrame, col: str = "No") -> int:
     except:
         return 1
 
-def tampilkan_n_terakhir(df: pd.DataFrame, n: int = 30) -> pd.DataFrame:
+def tampilkan_n_terakhir(df, n=30):
     try:
         if df.empty:
             return df
         d = df.copy()
-        d["_sort"] = pd.to_numeric(d["No"], errors="coerce")
-        d = d.sort_values("_sort", ascending=False).drop(columns="_sort")
+        d["_s"] = pd.to_numeric(d["No"], errors="coerce")
+        d = d.sort_values("_s", ascending=False).drop(columns="_s")
         return d.head(n)
     except:
         return df
@@ -153,30 +152,27 @@ def tampilkan_n_terakhir(df: pd.DataFrame, n: int = 30) -> pd.DataFrame:
 # ==========================================
 # LOAD & SAVE
 # ==========================================
-def load_data(conn_obj, worksheet: str) -> pd.DataFrame:
+def load_data(conn_obj, worksheet):
     try:
         df = conn_obj.read(worksheet=worksheet, ttl=60)
         if df is None or df.empty:
             return get_empty_df(worksheet)
-
         df = df.astype(str).replace(r"\.0$", "", regex=True)
         for col in df.columns:
             df[col] = df[col].str.strip()
         df = df.replace(["nan", "None", "", "null", "NaN", "<NA>"], "-")
-
         if worksheet == WS_KAS:
             df = pastikan_kolom(df, KOLOM_KAS)
         elif worksheet == WS_PENGATURAN:
             df = pastikan_kolom(df, KOLOM_PENGATURAN)
         elif worksheet == WS_PENGECEKAN:
             df = pastikan_kolom(df, KOLOM_PENGECEKAN)
-
         return df
     except Exception as e:
-        st.error(f"Gagal membaca data ({worksheet}): {e}")
+        st.error(f"Gagal membaca ({worksheet}): {e}")
         return get_empty_df(worksheet)
 
-def safe_update(conn_obj, worksheet: str, data: pd.DataFrame) -> bool:
+def safe_update(conn_obj, worksheet, data):
     try:
         conn_obj.update(worksheet=worksheet, data=data)
         st.cache_data.clear()
@@ -185,29 +181,26 @@ def safe_update(conn_obj, worksheet: str, data: pd.DataFrame) -> bool:
         st.error(f"Gagal menyimpan ({worksheet}): {e}")
         return False
 
-def tombol_refresh(key_btn: str):
+def tombol_refresh(key_btn):
     if st.button("🔄", key=key_btn, use_container_width=True):
         st.cache_data.clear()
         st.rerun()
 
 # ==========================================
-# SALDO KAS
+# SALDO
 # ==========================================
-def get_last_saldo(df_kas: pd.DataFrame):
+def get_last_saldo(df_kas):
     try:
         if df_kas.empty:
             return 0.0, 0.0, 0.0, 0.0
-
         d = df_kas[df_kas["No"] != "-"].copy()
         if "Jenis_Transaksi" in d.columns:
             d = d[d["Jenis_Transaksi"] != "PENGECEKAN"]
         if d.empty:
             return 0.0, 0.0, 0.0, 0.0
-
-        d["_sort"] = pd.to_numeric(d["No"], errors="coerce")
-        d = d.sort_values("_sort", ascending=True)
+        d["_s"] = pd.to_numeric(d["No"], errors="coerce")
+        d = d.sort_values("_s", ascending=True)
         last = d.iloc[-1]
-
         kas = to_float(last.get("Sisa_Kas_Di_Tangan", 0))
         atm = to_float(last.get("Sisa_ATM", 0))
         shopee = to_float(last.get("Sisa_Shopee", 0))
@@ -215,7 +208,7 @@ def get_last_saldo(df_kas: pd.DataFrame):
     except:
         return 0.0, 0.0, 0.0, 0.0
 
-def hitung_ringkasan(df_kas: pd.DataFrame):
+def hitung_ringkasan(df_kas):
     try:
         if df_kas.empty:
             return 0.0, 0.0
@@ -223,47 +216,38 @@ def hitung_ringkasan(df_kas: pd.DataFrame):
         if "Jenis_Transaksi" not in d.columns:
             return 0.0, 0.0
         d = d[d["Jenis_Transaksi"].isin(["MASUK", "KELUAR"])]
-        total_masuk = d[d["Jenis_Transaksi"] == "MASUK"]["Nominal"].apply(to_float).sum()
-        total_keluar = d[d["Jenis_Transaksi"] == "KELUAR"]["Nominal"].apply(to_float).sum()
-        return total_masuk, total_keluar
+        masuk = d[d["Jenis_Transaksi"] == "MASUK"]["Nominal"].apply(to_float).sum()
+        keluar = d[d["Jenis_Transaksi"] == "KELUAR"]["Nominal"].apply(to_float).sum()
+        return masuk, keluar
     except:
         return 0.0, 0.0
 
-def hitung_pengeluaran_hari_ini(df_kas: pd.DataFrame) -> float:
+def hitung_pengeluaran_hari_ini(df_kas):
     try:
         if df_kas.empty:
             return 0.0
         d = df_kas[df_kas["No"] != "-"].copy()
         if "Jenis_Transaksi" not in d.columns or "Tanggal" not in d.columns:
             return 0.0
-
-        hari_ini_str = today_wita().strftime("%d/%m/%Y")
-        d["Tgl_Bersih"] = d["Tanggal"].astype(str).str.strip().str.replace("-", "/", regex=False)
-
-        d_hari_ini = d[
-            (d["Tgl_Bersih"] == hari_ini_str) &
-            (d["Jenis_Transaksi"] == "KELUAR")
-        ]
-
-        return d_hari_ini["Nominal"].apply(to_float).sum()
+        hari_ini = today_wita().strftime("%d/%m/%Y")
+        d["_tgl"] = d["Tanggal"].astype(str).str.strip().str.replace("-", "/", regex=False)
+        d_hari = d[(d["_tgl"] == hari_ini) & (d["Jenis_Transaksi"] == "KELUAR")]
+        return d_hari["Nominal"].apply(to_float).sum()
     except:
         return 0.0
 
 # ==========================================
 # PENGATURAN
 # ==========================================
-def get_pengaturan(df_pg: pd.DataFrame, jenis: str):
+def get_pengaturan(df_pg, jenis):
     try:
         if df_pg.empty:
             return pd.DataFrame()
-        return df_pg[
-            (df_pg["Jenis"] == jenis) &
-            (df_pg["Status"] == "AKTIF")
-        ].copy()
+        return df_pg[(df_pg["Jenis"] == jenis) & (df_pg["Status"] == "AKTIF")].copy()
     except:
         return pd.DataFrame()
 
-def get_gaji(df_pg: pd.DataFrame) -> float:
+def get_gaji(df_pg):
     try:
         d = df_pg[(df_pg["Jenis"] == "GAJI") & (df_pg["Status"] == "AKTIF")]
         if d.empty:
@@ -272,7 +256,7 @@ def get_gaji(df_pg: pd.DataFrame) -> float:
     except:
         return 0.0
 
-def get_tabungan(df_pg: pd.DataFrame) -> float:
+def get_tabungan(df_pg):
     try:
         d = get_pengaturan(df_pg, "TABUNGAN")
         if d.empty:
@@ -281,128 +265,124 @@ def get_tabungan(df_pg: pd.DataFrame) -> float:
     except:
         return 0.0
 
-def hitung_pengeluaran_tetap_bulanan(df_pg: pd.DataFrame) -> float:
+def hitung_pengeluaran_tetap_bulanan(df_pg):
     try:
         d = get_pengaturan(df_pg, "PENGELUARAN")
         if d.empty:
             return 0.0
         total = 0.0
-        jml_minggu = get_jumlah_minggu_bulan_ini()
+        jm = get_jumlah_minggu_bulan_ini()
         for _, row in d.iterrows():
-            nominal = to_float(row.get("Nominal", 0))
-            periode = str(row.get("Periode", "SEBULAN")).strip().upper()
-            if periode == "SEMINGGU":
-                total += nominal * jml_minggu
-            elif periode == "SEBULAN":
-                total += nominal
+            nom = to_float(row.get("Nominal", 0))
+            per = str(row.get("Periode", "SEBULAN")).strip().upper()
+            if per == "SEMINGGU":
+                total += nom * jm
+            elif per == "SEBULAN":
+                total += nom
         return total
     except:
         return 0.0
 
-def hitung_beban_belum_bayar(df_pg: pd.DataFrame) -> float:
+def hitung_beban_belum_bayar(df_pg):
     try:
         d = get_pengaturan(df_pg, "PENGELUARAN")
         if d.empty:
             return 0.0
         total = 0.0
-        jml_minggu = get_jumlah_minggu_bulan_ini()
-        bulan_ini = get_bulan_ini_str()
+        jm = get_jumlah_minggu_bulan_ini()
+        bi = get_bulan_ini_str()
         for _, row in d.iterrows():
-            nominal = to_float(row.get("Nominal", 0))
-            periode = str(row.get("Periode", "SEBULAN")).strip().upper()
-            bulan_bayar = str(row.get("Bulan_Bayar", "-")).strip()
-            counter = int(to_float(row.get("Counter_Bayar", 0)))
-            if periode == "SEBULAN":
-                if bulan_bayar != bulan_ini:
-                    total += nominal
-            elif periode == "SEMINGGU":
-                if bulan_bayar != bulan_ini:
-                    counter = 0
-                sisa = jml_minggu - counter
+            nom = to_float(row.get("Nominal", 0))
+            per = str(row.get("Periode", "SEBULAN")).strip().upper()
+            bb = str(row.get("Bulan_Bayar", "-")).strip()
+            cnt = int(to_float(row.get("Counter_Bayar", 0)))
+            if per == "SEBULAN":
+                if bb != bi:
+                    total += nom
+            elif per == "SEMINGGU":
+                if bb != bi:
+                    cnt = 0
+                sisa = jm - cnt
                 if sisa > 0:
-                    total += nominal * sisa
+                    total += nom * sisa
         return total
     except:
         return 0.0
 
-def hitung_pengeluaran_harian(df_pg: pd.DataFrame) -> float:
+def hitung_pengeluaran_harian(df_pg):
     try:
-        total_bulanan = hitung_pengeluaran_tetap_bulanan(df_pg)
-        jumlah_hari = get_jumlah_hari_bulan_ini()
-        return total_bulanan / jumlah_hari if jumlah_hari > 0 else 0.0
+        tb = hitung_pengeluaran_tetap_bulanan(df_pg)
+        jh = get_jumlah_hari_bulan_ini()
+        return tb / jh if jh > 0 else 0.0
     except:
         return 0.0
 
-def hitung_hasil_bersih_bulanan(df_pg: pd.DataFrame) -> float:
+def hitung_hasil_bersih_bulanan(df_pg):
     try:
-        gaji = get_gaji(df_pg)
-        pengeluaran = hitung_pengeluaran_tetap_bulanan(df_pg)
-        tabungan = get_tabungan(df_pg)
-        return gaji - pengeluaran - tabungan
+        return get_gaji(df_pg) - hitung_pengeluaran_tetap_bulanan(df_pg) - get_tabungan(df_pg)
     except:
         return 0.0
 
-def hitung_saldo_siap_pakai(df_kas, df_pg) -> float:
+def hitung_saldo_siap_pakai(df_kas, df_pg):
     try:
-        last_seluruh, _, _, _ = get_last_saldo(df_kas)
-        beban_sisa = hitung_beban_belum_bayar(df_pg)
-        tabungan = get_tabungan(df_pg)
-        return last_seluruh - beban_sisa - tabungan
+        ls, _, _, _ = get_last_saldo(df_kas)
+        return ls - hitung_beban_belum_bayar(df_pg) - get_tabungan(df_pg)
     except:
         return 0.0
 
-def hitung_batas_harian(df_kas, df_pg) -> float:
+def hitung_batas_harian(df_kas, df_pg):
     try:
-        saldo_siap = hitung_saldo_siap_pakai(df_kas, df_pg)
-        sisa_hari = get_sisa_hari_bulan_ini()
-        if sisa_hari > 0 and saldo_siap > 0:
-            return saldo_siap / sisa_hari
+        ss = hitung_saldo_siap_pakai(df_kas, df_pg)
+        sh = get_sisa_hari_bulan_ini()
+        if sh > 0 and ss > 0:
+            return ss / sh
         return 0.0
     except:
         return 0.0
 
-def hitung_sisa_batas_hari_ini(df_kas, df_pg) -> float:
+def hitung_sisa_batas_hari_ini(df_kas, df_pg):
     try:
-        batas = hitung_batas_harian(df_kas, df_pg)
-        keluar_hari_ini = hitung_pengeluaran_hari_ini(df_kas)
-        return batas - keluar_hari_ini
+        return hitung_batas_harian(df_kas, df_pg) - hitung_pengeluaran_hari_ini(df_kas)
     except:
         return 0.0
 
 def get_status_batas_harian(df_kas, df_pg):
     try:
         batas = hitung_batas_harian(df_kas, df_pg)
-        sisa = hitung_sisa_batas_hari_ini(df_kas, df_pg)
         keluar = hitung_pengeluaran_hari_ini(df_kas)
+        sisa = batas - keluar
 
         if batas <= 0:
-            return "bahaya", "❌ Tidak ada budget harian!", batas, sisa, keluar
+            return "bahaya", "❌ Saldo siap pakai sudah habis.", 0, 0, 0
+
+        if keluar <= 0:
+            return "hijau", f"✅ Belum ada pengeluaran hari ini. Batas penuh {rupiah(batas)}", batas, batas, 0
 
         persen = (sisa / batas) * 100 if batas > 0 else 0
 
         if sisa < 0:
             return "bahaya", f"🚨 Melebihi batas harian! Over {rupiah(abs(sisa))}", batas, sisa, keluar
         elif persen < 20:
-            return "merah", f"❌ Sisa batas tinggal {persen:.0f}% ({rupiah(sisa)})", batas, sisa, keluar
+            return "merah", f"❌ Sisa batas tinggal {rupiah(sisa)} ({persen:.0f}%)", batas, sisa, keluar
         elif persen < 50:
-            return "kuning", f"⚠️ Sisa batas {persen:.0f}% ({rupiah(sisa)})", batas, sisa, keluar
+            return "kuning", f"⚠️ Sisa batas {rupiah(sisa)} ({persen:.0f}%)", batas, sisa, keluar
         else:
-            return "hijau", f"✅ Aman — sisa {persen:.0f}% ({rupiah(sisa)})", batas, sisa, keluar
+            return "hijau", f"✅ Masih aman. Sisa {rupiah(sisa)} ({persen:.0f}%)", batas, sisa, keluar
     except:
         return "aman", "", 0, 0, 0
 
 # ==========================================
-# PENGECEKAN SELISIH
+# SELISIH
 # ==========================================
-def get_selisih_aktif(df_cek: pd.DataFrame):
+def get_selisih_aktif(df_cek):
     try:
         if df_cek.empty:
             return False, 0.0, "-"
         d = df_cek[df_cek["No"] != "-"].copy()
         if d.empty:
             return False, 0.0, "-"
-        d["_sort"] = pd.to_numeric(d["No"], errors="coerce")
-        d = d.sort_values("_sort", ascending=True)
+        d["_s"] = pd.to_numeric(d["No"], errors="coerce")
+        d = d.sort_values("_s", ascending=True)
         last = d.iloc[-1]
         status = str(last.get("Status_Aktif", "TIDAK")).strip().upper()
         selisih = to_float(last.get("Selisih", 0))
