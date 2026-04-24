@@ -486,7 +486,7 @@ def render_top_nav(active: str = "home"):
 
     nav_items = [
         {"icon": "🏠", "label": "Home", "page": "app.py", "key": "home"},
-        {"icon": "💰", "label": "Kas", "page": "pages/1_💰_Kas.py", "key": "kas"},
+        {"icon": "💰", "label": "KEUANGAN", "page": "pages/1_💰_KEUANGAN.py", "key": "KEUANGAN"},
         {"icon": "⚙️", "label": "Setting", "page": "pages/2_⚙️_Pengaturan.py", "key": "setting"},
     ]
 
