@@ -3,14 +3,13 @@
 # ==========================================
 import streamlit as st
 import pandas as pd
-from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
 
 from utils.css_styles import inject_css, render_top_nav
 from utils.helpers import (
-    WS_KEUANGAN,
+    WS_KAS,
     WS_PENGATURAN,
-    KOLOM_KEUANGAN,
+    KOLOM_KAS,
     KOLOM_PENGATURAN,
     load_data,
     safe_update,
@@ -59,8 +58,8 @@ render_top_nav(active="setting")
 df_pg = load_data(conn, WS_PENGATURAN)
 df_pg = pastikan_kolom(df_pg, KOLOM_PENGATURAN)
 
-df_KEUANGAN = load_data(conn, WS_KEUANGAN)
-df_KEUANGAN = pastikan_kolom(df_KEUANGAN, KOLOM_KEUANGAN)
+df_kas = load_data(conn, WS_KAS)
+df_kas = pastikan_kolom(df_kas, KOLOM_KAS)
 
 # ==========================================
 # HEADER
@@ -70,7 +69,7 @@ st.markdown(
     <div style="text-align:center; padding:5px 0;">
         <p style="font-family:'Poppins',sans-serif;
                   font-size:1.3rem; font-weight:700;
-                  color:#f5f5f5; margin:0;">
+                  color:#f5f5f5; margin:0; text-align:center;">
             ⚙️ Pengaturan
         </p>
     </div>
@@ -85,17 +84,17 @@ st.divider()
 # ==========================================
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "💼 Gaji",
-    "💳 Pengeluaran Tetap",
+    "💳 Pengeluaran",
     "🏦 Tabungan",
     "🔄 Transfer",
-    "📊 RingKEUANGANan Bulanan"
+    "📊 Ringkasan"
 ])
 
 # ==========================================
 # TAB 1 — GAJI
 # ==========================================
 with tab1:
-    st.subheader("💼 Input Gaji")
+    st.subheader("💼 Pengaturan Gaji")
 
     gaji_sekarang = get_gaji(df_pg)
 
@@ -108,7 +107,7 @@ with tab1:
 
     with st.form("form_gaji", clear_on_submit=True):
         nominal_gaji = st.number_input(
-            "Nominal Gaji Baru",
+            "Nominal Gaji",
             min_value=0.0,
             value=float(gaji_sekarang) if gaji_sekarang > 0 else 0.0,
             step=100000.0,
@@ -138,8 +137,7 @@ with tab1:
             if nominal_gaji <= 0:
                 st.error("❌ Nominal gaji harus lebih dari 0.")
             else:
-                # Hapus gaji lama kalau ada
-                df_pg = df_pg[df_pg["Jenis"] != "GAJI"].copy()
+                df_pg_baru = df_pg[df_pg["Jenis"] != "GAJI"].copy()
 
                 row_gaji = {
                     "Jenis": "GAJI",
@@ -149,25 +147,27 @@ with tab1:
                     "Status": "AKTIF"
                 }
 
-                df_pg = pd.concat(
-                    [df_pg, pd.DataFrame([row_gaji])],
+                df_pg_baru = pd.concat(
+                    [df_pg_baru, pd.DataFrame([row_gaji])],
                     ignore_index=True
                 )
 
-                if safe_update(conn, WS_PENGATURAN, df_pg):
+                if safe_update(conn, WS_PENGATURAN, df_pg_baru):
                     st.success("✅ Gaji berhasil disimpan!")
                     st.rerun()
 
     st.divider()
 
-    # Tombol masukkan gaji ke transaksi
     if gaji_sekarang > 0:
-        st.subheader("🚀 Masukkan Gaji ke KEUANGAN")
-        st.info(f"Klik tombol di bawah untuk memasukkan gaji **{rupiah(gaji_sekarang)}** ke transaksi KEUANGAN.")
+        st.subheader("🚀 Masukkan Gaji ke Keuangan")
+        st.info(
+            f"Klik tombol di bawah untuk memasukkan gaji "
+            f"**{rupiah(gaji_sekarang)}** ke transaksi."
+        )
 
         tujuan_gaji = st.selectbox(
             "Tujuan Gaji Masuk Ke",
-            ["SALDO KEUANGAN (DI TANGAN)", "UANG DI ATM", "UANG DI SHOPEE"],
+            ["SALDO KAS (DI TANGAN)", "UANG DI ATM", "UANG DI SHOPEE"],
             key="tujuan_gaji"
         )
 
@@ -177,25 +177,25 @@ with tab1:
             use_container_width=True,
             key="btn_masukkan_gaji"
         ):
-            last_seluruh, last_KEUANGAN, last_atm, last_shopee = get_last_saldo(df_KEUANGAN)
+            last_seluruh, last_kas, last_atm, last_shopee = get_last_saldo(df_kas)
 
-            if tujuan_gaji == "SALDO KEUANGAN (DI TANGAN)":
-                new_KEUANGAN = last_KEUANGAN + gaji_sekarang
+            if tujuan_gaji == "SALDO KAS (DI TANGAN)":
+                new_kas = last_kas + gaji_sekarang
                 new_atm = last_atm
                 new_shopee = last_shopee
             elif tujuan_gaji == "UANG DI ATM":
-                new_KEUANGAN = last_KEUANGAN
+                new_kas = last_kas
                 new_atm = last_atm + gaji_sekarang
                 new_shopee = last_shopee
             else:
-                new_KEUANGAN = last_KEUANGAN
+                new_kas = last_kas
                 new_atm = last_atm
                 new_shopee = last_shopee + gaji_sekarang
 
-            total_baru = new_KEUANGAN + new_atm + new_shopee
+            total_baru = new_kas + new_atm + new_shopee
 
-            next_no = get_next_no(df_KEUANGAN)
-            row_gaji_KEUANGAN = {
+            next_no = get_next_no(df_kas)
+            row_gaji_kas = {
                 "No": str(next_no),
                 "Tanggal": today_wita().strftime("%d/%m/%Y"),
                 "Keterangan": "GAJI BULANAN",
@@ -203,19 +203,21 @@ with tab1:
                 "Nominal": fmt_nominal(gaji_sekarang),
                 "Sumber_Anggaran": "-",
                 "Tujuan_Anggaran": tujuan_gaji,
-                "Sisa_KEUANGAN_Di_Tangan": fmt_nominal(new_KEUANGAN),
+                "Sisa_Kas_Di_Tangan": fmt_nominal(new_kas),
                 "Sisa_ATM": fmt_nominal(new_atm),
                 "Sisa_Shopee": fmt_nominal(new_shopee),
-                "Sisa_KEUANGAN_Seluruh": fmt_nominal(total_baru),
+                "Sisa_Kas_Seluruh": fmt_nominal(total_baru),
                 "Catatan": "INPUT GAJI OTOMATIS"
             }
 
-            df_KEUANGAN_baru = pd.concat(
-                [df_KEUANGAN, pd.DataFrame([row_gaji_KEUANGAN])],
+            df_kas_baru = pd.concat(
+                [df_kas, pd.DataFrame([row_gaji_kas])],
                 ignore_index=True
             )
-            if safe_update(conn, WS_KEUANGAN, df_KEUANGAN_baru):
-                st.success(f"✅ Gaji {rupiah(gaji_sekarang)} berhasil dimasukkan ke KEUANGAN!")
+            if safe_update(conn, WS_KAS, df_kas_baru):
+                st.success(
+                    f"✅ Gaji {rupiah(gaji_sekarang)} berhasil dimasukkan!"
+                )
                 st.rerun()
 
 # ==========================================
@@ -233,8 +235,9 @@ with tab2:
     df_pengeluaran = get_pengaturan(df_pg, "PENGELUARAN")
 
     if not df_pengeluaran.empty and aktif_pengeluaran:
+        kolom_tampil = [k for k in ["Nama", "Nominal", "Periode"] if k in df_pengeluaran.columns]
         st.dataframe(
-            df_pengeluaran[["Nama", "Nominal", "Periode"]],
+            df_pengeluaran[kolom_tampil],
             use_container_width=True,
             hide_index=True
         )
@@ -303,13 +306,12 @@ with tab2:
                     ignore_index=True
                 )
                 if safe_update(conn, WS_PENGATURAN, df_pg_baru):
-                    st.success(f"✅ Pengeluaran '{nama_p}' berhasil ditambahkan!")
+                    st.success(f"✅ '{nama_p}' berhasil ditambahkan!")
                     st.rerun()
 
-    # Hapus pengeluaran
     if not df_pengeluaran.empty:
         st.divider()
-        st.subheader("🗑️ Hapus Pengeluaran Tetap")
+        st.subheader("🗑️ Hapus Pengeluaran")
 
         nama_list = df_pengeluaran["Nama"].tolist()
         hapus_nama = st.selectbox(
@@ -318,13 +320,17 @@ with tab2:
             key="hapus_pengeluaran"
         )
 
-        if st.button("🗑️ Hapus", key="btn_hapus_p", use_container_width=True):
-            df_pg = df_pg[~(
+        if st.button(
+            "🗑️ Hapus",
+            key="btn_hapus_p",
+            use_container_width=True
+        ):
+            df_pg_baru = df_pg[~(
                 (df_pg["Jenis"] == "PENGELUARAN") &
                 (df_pg["Nama"] == hapus_nama)
             )].copy()
 
-            if safe_update(conn, WS_PENGATURAN, df_pg):
+            if safe_update(conn, WS_PENGATURAN, df_pg_baru):
                 st.success(f"✅ '{hapus_nama}' berhasil dihapus!")
                 st.rerun()
 
@@ -341,7 +347,9 @@ with tab3:
     )
 
     d_tabungan = get_pengaturan(df_pg, "TABUNGAN")
-    tabungan_sekarang = to_float(d_tabungan.iloc[0]["Nominal"]) if not d_tabungan.empty else 0
+    tabungan_sekarang = to_float(
+        d_tabungan.iloc[0]["Nominal"]
+    ) if not d_tabungan.empty else 0.0
 
     if tabungan_sekarang > 0 and aktif_tabungan:
         st.metric("🏦 Tabungan/Bulan", rupiah(tabungan_sekarang))
@@ -370,7 +378,7 @@ with tab3:
                 if nominal_tab <= 0:
                     st.error("❌ Nominal harus lebih dari 0.")
                 else:
-                    df_pg = df_pg[df_pg["Jenis"] != "TABUNGAN"].copy()
+                    df_pg_baru = df_pg[df_pg["Jenis"] != "TABUNGAN"].copy()
 
                     row_tab = {
                         "Jenis": "TABUNGAN",
@@ -380,38 +388,37 @@ with tab3:
                         "Status": "AKTIF"
                     }
 
-                    df_pg = pd.concat(
-                        [df_pg, pd.DataFrame([row_tab])],
+                    df_pg_baru = pd.concat(
+                        [df_pg_baru, pd.DataFrame([row_tab])],
                         ignore_index=True
                     )
-                    if safe_update(conn, WS_PENGATURAN, df_pg):
+                    if safe_update(conn, WS_PENGATURAN, df_pg_baru):
                         st.success("✅ Tabungan berhasil disimpan!")
                         st.rerun()
 
 # ==========================================
-# TAB 4 — TRANSFER ANTAR ANGGARAN
+# TAB 4 — TRANSFER
 # ==========================================
 with tab4:
     st.subheader("🔄 Transfer Antar Anggaran")
-    st.info("Pindahkan uang antar saldo tanpa transaksi masuk/keluar.")
+    st.info("Pindahkan uang antar saldo tanpa mengubah total.")
 
-    last_seluruh, last_KEUANGAN, last_atm, last_shopee = get_last_saldo(df_KEUANGAN)
+    last_seluruh, last_kas, last_atm, last_shopee = get_last_saldo(df_kas)
 
-    # Tampilkan saldo
     tc1, tc2, tc3 = st.columns(3)
-    tc1.metric("💵 Tangan", rupiah(last_KEUANGAN))
+    tc1.metric("💵 Tangan", rupiah(last_kas))
     tc2.metric("🏧 ATM", rupiah(last_atm))
     tc3.metric("🛒 Shopee", rupiah(last_shopee))
 
     st.divider()
 
-    pilihan_saldo = ["UANG KEUANGAN (DI TANGAN)", "UANG DI ATM", "UANG DI SHOPEE"]
+    pilihan = ["UANG KAS (DI TANGAN)", "UANG DI ATM", "UANG DI SHOPEE"]
 
     tf1, tf2 = st.columns(2)
     with tf1:
-        dari = st.selectbox("Dari", pilihan_saldo, key="transfer_dari")
+        dari = st.selectbox("Dari", pilihan, key="transfer_dari")
     with tf2:
-        ke_options = [x for x in pilihan_saldo if x != dari]
+        ke_options = [x for x in pilihan if x != dari]
         ke = st.selectbox("Ke", ke_options, key="transfer_ke")
 
     nominal_tf = st.number_input(
@@ -426,9 +433,8 @@ with tab4:
     if nominal_tf > 0:
         st.caption(f"💰 {rupiah(nominal_tf)}")
 
-        # Cek saldo cukup
-        if dari == "UANG KEUANGAN (DI TANGAN)" and nominal_tf > last_KEUANGAN:
-            st.warning(f"⚠️ Saldo KEUANGAN tangan ({rupiah(last_KEUANGAN)}) tidak cukup!")
+        if dari == "UANG KAS (DI TANGAN)" and nominal_tf > last_kas:
+            st.warning(f"⚠️ Saldo tangan ({rupiah(last_kas)}) tidak cukup!")
         elif dari == "UANG DI ATM" and nominal_tf > last_atm:
             st.warning(f"⚠️ Saldo ATM ({rupiah(last_atm)}) tidak cukup!")
         elif dari == "UANG DI SHOPEE" and nominal_tf > last_shopee:
@@ -443,59 +449,57 @@ with tab4:
         if nominal_tf <= 0:
             st.error("❌ Nominal harus lebih dari 0.")
         else:
-            new_KEUANGAN = last_KEUANGAN
+            new_kas = last_kas
             new_atm = last_atm
             new_shopee = last_shopee
 
-            # Kurangi sumber
-            if dari == "UANG KEUANGAN (DI TANGAN)":
-                new_KEUANGAN -= nominal_tf
+            if dari == "UANG KAS (DI TANGAN)":
+                new_kas -= nominal_tf
             elif dari == "UANG DI ATM":
                 new_atm -= nominal_tf
-            elif dari == "UANG DI SHOPEE":
+            else:
                 new_shopee -= nominal_tf
 
-            # Tambahkan tujuan
-            if ke == "UANG KEUANGAN (DI TANGAN)":
-                new_KEUANGAN += nominal_tf
+            if ke == "UANG KAS (DI TANGAN)":
+                new_kas += nominal_tf
             elif ke == "UANG DI ATM":
                 new_atm += nominal_tf
-            elif ke == "UANG DI SHOPEE":
+            else:
                 new_shopee += nominal_tf
 
-            total_baru = new_KEUANGAN + new_atm + new_shopee
+            total_baru = new_kas + new_atm + new_shopee
 
-            next_no = get_next_no(df_KEUANGAN)
-            row_transfer = {
+            next_no = get_next_no(df_kas)
+            row_tf = {
                 "No": str(next_no),
                 "Tanggal": today_wita().strftime("%d/%m/%Y"),
-                "Keterangan": f"TRANSFER: {dari} → {ke}",
+                "Keterangan": f"TRANSFER: {dari} ke {ke}",
                 "Jenis_Transaksi": "TRANSFER",
                 "Nominal": fmt_nominal(nominal_tf),
                 "Sumber_Anggaran": dari,
                 "Tujuan_Anggaran": ke,
-                "Sisa_KEUANGAN_Di_Tangan": fmt_nominal(new_KEUANGAN),
+                "Sisa_Kas_Di_Tangan": fmt_nominal(new_kas),
                 "Sisa_ATM": fmt_nominal(new_atm),
                 "Sisa_Shopee": fmt_nominal(new_shopee),
-                "Sisa_KEUANGAN_Seluruh": fmt_nominal(total_baru),
+                "Sisa_Kas_Seluruh": fmt_nominal(total_baru),
                 "Catatan": "TRANSFER ANTAR ANGGARAN"
             }
 
-            df_KEUANGAN_baru = pd.concat(
-                [df_KEUANGAN, pd.DataFrame([row_transfer])],
+            df_kas_baru = pd.concat(
+                [df_kas, pd.DataFrame([row_tf])],
                 ignore_index=True
             )
-            if safe_update(conn, WS_KEUANGAN, df_KEUANGAN_baru):
+            if safe_update(conn, WS_KAS, df_kas_baru):
                 st.success(
                     f"✅ Transfer {rupiah(nominal_tf)} dari {dari} ke {ke} berhasil!"
                 )
                 st.rerun()
 
 # ==========================================
-# TAB 5 — RINGKEUANGANAN BULANAN
+# TAB 5 — RINGKASAN BULANAN
 # ==========================================
 with tab5:
-    st.subheader("📊 RingKEUANGANan Keuangan Bulan Ini")
+    st.subheader("📊 Ringkasan Keuangan Bulan Ini")
 
     gaji = get_gaji(df_pg)
     pengeluaran_bulanan = hitung_pengeluaran_tetap_bulanan(df_pg)
@@ -503,21 +507,21 @@ with tab5:
     hasil_bersih = hitung_hasil_bersih_bulanan(df_pg)
 
     d_tab = get_pengaturan(df_pg, "TABUNGAN")
-    tabungan = to_float(d_tab.iloc[0]["Nominal"]) if not d_tab.empty else 0
+    tabungan = to_float(d_tab.iloc[0]["Nominal"]) if not d_tab.empty else 0.0
 
     jumlah_hari = get_jumlah_hari_bulan_ini()
     sisa_hari = get_sisa_hari_bulan_ini()
 
-    last_seluruh, last_KEUANGAN, last_atm, last_shopee = get_last_saldo(df_KEUANGAN)
+    last_seluruh, last_kas, last_atm, last_shopee = get_last_saldo(df_kas)
 
-    # Info bulan
     st.markdown(
         f"""
         <div style="text-align:center; padding:12px;
-                    background: #13131a; border: 1px solid #2a2a3a;
+                    background:#13131a; border:1px solid #2a2a3a;
                     border-radius:12px; margin-bottom:16px;">
             <p style="font-family:'Poppins',sans-serif;
-                      font-size:0.75rem; color:#8a8a9a; margin:0;">
+                      font-size:0.75rem; color:#8a8a9a; margin:0;
+                      text-align:center;">
                 Bulan ini: <b style="color:#c4a35a;">{jumlah_hari} hari</b>
                 &nbsp;|&nbsp;
                 Sisa: <b style="color:#c4a35a;">{sisa_hari} hari</b>
@@ -527,7 +531,6 @@ with tab5:
         unsafe_allow_html=True
     )
 
-    # Metric
     m1, m2 = st.columns(2)
     m1.metric("💼 Gaji", rupiah(gaji))
     m2.metric("💳 Pengeluaran Tetap/Bulan", rupiah(pengeluaran_bulanan))
@@ -538,7 +541,6 @@ with tab5:
 
     st.divider()
 
-    # Hasil bersih
     if hasil_bersih >= 0:
         st.success(f"✨ **Hasil Bersih: {rupiah(hasil_bersih)}**")
     else:
@@ -546,26 +548,22 @@ with tab5:
 
     st.divider()
 
-    # Budget harian tersedia
-    if last_KEUANGAN > 0 and sisa_hari > 0:
-        budget_harian = last_KEUANGAN / sisa_hari
-
+    if last_kas > 0 and sisa_hari > 0:
+        budget_harian = last_kas / sisa_hari
         st.metric("🎯 Budget Harian Tersedia", rupiah(budget_harian))
 
         if budget_harian < pengeluaran_harian:
             st.warning(
-                f"⚠️ Budget harian ({rupiah(budget_harian)}) "
-                f"lebih kecil dari kebutuhan harian ({rupiah(pengeluaran_harian)}).\n\n"
-                f"Pertimbangkan untuk mengurangi pengeluaran!"
+                f"⚠️ Budget harian ({rupiah(budget_harian)}) lebih kecil "
+                f"dari kebutuhan ({rupiah(pengeluaran_harian)})."
             )
         else:
             sisa_budget = budget_harian - pengeluaran_harian
             st.success(
-                f"✅ Aman! Sisa budget harian setelah pengeluaran tetap: "
-                f"**{rupiah(sisa_budget)}**"
+                f"✅ Aman! Sisa budget harian: **{rupiah(sisa_budget)}**"
             )
     else:
-        st.info("Belum ada saldo KEUANGAN untuk menghitung budget harian.")
+        st.info("Belum ada saldo untuk menghitung budget harian.")
 
 # ==========================================
 # FOOTER
@@ -576,8 +574,8 @@ st.markdown(
                 border-top:1px solid #1e1e2a; margin-top:20px;">
         <p style="font-family:'Poppins',sans-serif;
                   font-size:0.55rem; font-weight:400;
-                  color:#3a3a4a; margin:0;">
-            Keuangan Pribadi • Financial Tracker
+                  color:#3a3a4a; margin:0; text-align:center;">
+            Keuangan Pribadi - Financial Tracker
         </p>
     </div>
     """,
