@@ -27,35 +27,24 @@ WS_PENGECEKAN = "PENGECEKAN"
 # KOLOM STANDAR
 # ==========================================
 KOLOM_KAS = [
-    "No",
-    "Tanggal",
-    "Keterangan",
-    "Jenis_Transaksi",
-    "Nominal",
-    "Sumber_Anggaran",
-    "Tujuan_Anggaran",
-    "Sisa_Kas_Di_Tangan",
-    "Sisa_ATM",
-    "Sisa_Shopee",
-    "Sisa_Kas_Seluruh",
+    "No", "Tanggal", "Keterangan",
+    "Jenis_Transaksi", "Nominal",
+    "Sumber_Anggaran", "Tujuan_Anggaran",
+    "Sisa_Kas_Di_Tangan", "Sisa_ATM",
+    "Sisa_Shopee", "Sisa_Kas_Seluruh",
     "Catatan"
 ]
 
 KOLOM_PENGATURAN = [
-    "Jenis",
-    "Nama",
-    "Nominal",
-    "Periode",
-    "Status"
+    "Jenis", "Nama", "Nominal",
+    "Periode", "Status",
+    "Bulan_Bayar", "Counter_Bayar"
 ]
 
 KOLOM_PENGECEKAN = [
-    "No",
-    "Tanggal",
-    "Kas_Fisik",
-    "Kas_Sistem",
-    "Selisih",
-    "Status_Aktif"
+    "No", "Tanggal",
+    "Kas_Fisik", "Kas_Sistem",
+    "Selisih", "Status_Aktif"
 ]
 
 # ==========================================
@@ -112,6 +101,16 @@ def get_sisa_hari_bulan_ini() -> int:
     hari_ini = today_wita()
     total = calendar.monthrange(hari_ini.year, hari_ini.month)[1]
     return total - hari_ini.day + 1
+
+def get_bulan_ini_str() -> str:
+    hari_ini = today_wita()
+    return f"{hari_ini.year}-{hari_ini.month:02d}"
+
+def get_jumlah_minggu_bulan_ini() -> int:
+    jumlah_hari = get_jumlah_hari_bulan_ini()
+    if jumlah_hari <= 28:
+        return 4
+    return 5
 
 # ==========================================
 # DATAFRAME
@@ -246,7 +245,6 @@ def get_pengaturan(df_pg: pd.DataFrame, jenis: str):
     try:
         if df_pg.empty:
             return pd.DataFrame()
-
         return df_pg[
             (df_pg["Jenis"] == jenis) &
             (df_pg["Status"] == "AKTIF")
@@ -273,18 +271,44 @@ def hitung_pengeluaran_tetap_bulanan(df_pg: pd.DataFrame) -> float:
             return 0.0
 
         total = 0.0
-        jumlah_hari = get_jumlah_hari_bulan_ini()
+        jml_minggu = get_jumlah_minggu_bulan_ini()
 
         for _, row in d.iterrows():
             nominal = to_float(row.get("Nominal", 0))
-            periode = str(row.get("Periode", "BULANAN")).strip().upper()
+            periode = str(row.get("Periode", "SEBULAN")).strip().upper()
 
-            if periode == "HARIAN":
-                total += nominal * jumlah_hari
-            elif periode == "MINGGUAN":
-                total += nominal * 4
-            elif periode == "BULANAN":
+            if periode == "SEMINGGU":
+                total += nominal * jml_minggu
+            elif periode == "SEBULAN":
                 total += nominal
+
+        return total
+    except:
+        return 0.0
+
+def hitung_beban_belum_bayar(df_pg: pd.DataFrame) -> float:
+    try:
+        d = get_pengaturan(df_pg, "PENGELUARAN")
+        if d.empty:
+            return 0.0
+
+        total = 0.0
+        jml_minggu = get_jumlah_minggu_bulan_ini()
+        bulan_ini = get_bulan_ini_str()
+
+        for _, row in d.iterrows():
+            nominal = to_float(row.get("Nominal", 0))
+            periode = str(row.get("Periode", "SEBULAN")).strip().upper()
+            bulan_bayar = str(row.get("Bulan_Bayar", "-")).strip()
+            counter = int(to_float(row.get("Counter_Bayar", 0)))
+
+            if periode == "SEBULAN":
+                if bulan_bayar != bulan_ini:
+                    total += nominal
+            elif periode == "SEMINGGU":
+                sisa_bayar = jml_minggu - counter
+                if sisa_bayar > 0:
+                    total += nominal * sisa_bayar
 
         return total
     except:
@@ -296,21 +320,10 @@ def hitung_pengeluaran_harian(df_pg: pd.DataFrame) -> float:
         if d.empty:
             return 0.0
 
-        total = 0.0
+        total_bulanan = hitung_pengeluaran_tetap_bulanan(df_pg)
         jumlah_hari = get_jumlah_hari_bulan_ini()
 
-        for _, row in d.iterrows():
-            nominal = to_float(row.get("Nominal", 0))
-            periode = str(row.get("Periode", "BULANAN")).strip().upper()
-
-            if periode == "HARIAN":
-                total += nominal
-            elif periode == "MINGGUAN":
-                total += nominal / 7
-            elif periode == "BULANAN":
-                total += nominal / jumlah_hari
-
-        return total
+        return total_bulanan / jumlah_hari if jumlah_hari > 0 else 0.0
     except:
         return 0.0
 
@@ -325,6 +338,20 @@ def hitung_hasil_bersih_bulanan(df_pg: pd.DataFrame) -> float:
             tabungan = to_float(d_tabungan.iloc[0]["Nominal"])
 
         return gaji - pengeluaran - tabungan
+    except:
+        return 0.0
+
+def hitung_batas_harian(df_kas, df_pg) -> float:
+    try:
+        last_seluruh, _, _, _ = get_last_saldo(df_kas)
+        beban_sisa = hitung_beban_belum_bayar(df_pg)
+        sisa_hari = get_sisa_hari_bulan_ini()
+
+        saldo_siap = last_seluruh - beban_sisa
+
+        if sisa_hari > 0 and saldo_siap > 0:
+            return saldo_siap / sisa_hari
+        return 0.0
     except:
         return 0.0
 
@@ -357,32 +384,17 @@ def get_selisih_aktif(df_cek: pd.DataFrame):
 # ==========================================
 # WARNING BATAS HARIAN
 # ==========================================
-def cek_warning_harian(df_kas: pd.DataFrame, df_pg: pd.DataFrame):
+def cek_warning_harian(df_kas, df_pg):
     try:
-        _, kas, _, _ = get_last_saldo(df_kas)
-        pengeluaran_harian = hitung_pengeluaran_harian(df_pg)
-        sisa_hari = get_sisa_hari_bulan_ini()
+        batas = hitung_batas_harian(df_kas, df_pg)
 
-        if pengeluaran_harian <= 0:
-            return "aman", ""
-
-        kebutuhan_sisa_bulan = pengeluaran_harian * sisa_hari
-        batas_harian = kas / sisa_hari if sisa_hari > 0 else 0
-
-        if kas <= 0:
-            return "bahaya", "❌ Keuangan di tangan MINUS! Saldo tidak mencukupi."
-        elif kas < pengeluaran_harian:
-            return "bahaya", (
-                f"❌ Keuangan di tangan ({rupiah(kas)}) tidak cukup untuk "
-                f"pengeluaran hari ini ({rupiah(pengeluaran_harian)})!"
-            )
-        elif kas < kebutuhan_sisa_bulan:
+        if batas <= 0:
+            return "bahaya", "❌ Saldo tidak mencukupi untuk sisa bulan ini!"
+        elif batas < 50000:
             return "warning", (
-                f"⚠️ Keuangan di tangan ({rupiah(kas)}) mungkin tidak cukup "
-                f"untuk sisa bulan ini ({sisa_hari} hari). "
-                f"Batas harian saat ini: {rupiah(batas_harian)}"
+                f"⚠️ Batas harian tinggal **{rupiah(batas)}**. "
+                f"Pertimbangkan untuk mengurangi pengeluaran!"
             )
-        else:
-            return "aman", ""
+        return "aman", ""
     except:
         return "aman", ""
