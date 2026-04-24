@@ -1,14 +1,14 @@
 # ==========================================
-# app.py — HOME / OPENING SCREEN
+# app.py
 # ==========================================
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 
 from utils.css_styles import inject_css, inject_opening_css, render_top_nav
 from utils.helpers import (
-    WS_KEUANGAN,
+    WS_KAS,
     WS_PENGATURAN,
-    KOLOM_KEUANGAN,
+    KOLOM_KAS,
     KOLOM_PENGATURAN,
     load_data,
     pastikan_kolom,
@@ -25,9 +25,6 @@ from utils.helpers import (
     to_float
 )
 
-# ==========================================
-# KONFIGURASI
-# ==========================================
 st.set_page_config(
     page_title="Keuangan Pribadi",
     page_icon="💰",
@@ -37,14 +34,9 @@ st.set_page_config(
 
 inject_css()
 
-# ==========================================
-# KONEKSI
-# ==========================================
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# ==========================================
-# OPENING SCREEN (hanya pertama kali)
-# ==========================================
+# ── OPENING SCREEN ──
 if "opening_done" not in st.session_state:
     st.session_state["opening_done"] = False
 
@@ -79,23 +71,17 @@ if not st.session_state["opening_done"]:
 
     st.stop()
 
-# ==========================================
-# NAVIGATION
-# ==========================================
+# ── NAVIGATION ──
 render_top_nav(active="home")
 
-# ==========================================
-# LOAD DATA
-# ==========================================
-df_kas = load_data(conn, WS_KEUANGAN)
-df_kas = pastikan_kolom(df_kas, KOLOM_KEUANGAN)
+# ── LOAD DATA ──
+df_kas = load_data(conn, WS_KAS)
+df_kas = pastikan_kolom(df_kas, KOLOM_KAS)
 
 df_pg = load_data(conn, WS_PENGATURAN)
 df_pg = pastikan_kolom(df_pg, KOLOM_PENGATURAN)
 
-# ==========================================
-# HEADER
-# ==========================================
+# ── HEADER ──
 st.markdown(
     """
     <div style="text-align:center; padding: 10px 0 5px 0;">
@@ -107,7 +93,8 @@ st.markdown(
         </p>
         <p style="font-family:'Poppins',sans-serif;
                   font-size:1.4rem; font-weight:700;
-                  color:#f5f5f5; margin:4px 0 0 0;">
+                  color:#f5f5f5; margin:4px 0 0 0;
+                  text-align:center;">
             Hai, Luthfi 👋
         </p>
     </div>
@@ -117,13 +104,10 @@ st.markdown(
 
 st.divider()
 
-# ==========================================
-# RINGKEUANGANAN SALDO
-# ==========================================
+# ── RINGKASAN SALDO ──
 last_seluruh, last_kas, last_atm, last_shopee = get_last_saldo(df_kas)
 total_masuk, total_keluar = hitung_ringkasan(df_kas)
 
-# Saldo besar
 st.markdown(
     f"""
     <div style="text-align:center; padding: 20px 0;
@@ -134,13 +118,15 @@ st.markdown(
         <p style="font-family:'Poppins',sans-serif;
                   font-size:0.7rem; font-weight:500;
                   color:#8a8a9a; text-transform:uppercase;
-                  letter-spacing:0.08em; margin:0 0 6px 0;">
+                  letter-spacing:0.08em; margin:0 0 6px 0;
+                  text-align:center;">
             Total Saldo
         </p>
         <p style="font-family:'JetBrains Mono',monospace;
                   font-size:2rem; font-weight:700;
                   color:#c4a35a; margin:0;
-                  text-shadow: 0 0 20px rgba(196,163,90,0.2);">
+                  text-shadow: 0 0 20px rgba(196,163,90,0.2);
+                  text-align:center;">
             {rupiah(last_seluruh)}
         </p>
     </div>
@@ -148,7 +134,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Detail saldo
 c1, c2, c3 = st.columns(3)
 c1.metric("💵 Di Tangan", rupiah(last_kas))
 c2.metric("🏧 ATM", rupiah(last_atm))
@@ -156,35 +141,26 @@ c3.metric("🛒 Shopee", rupiah(last_shopee))
 
 st.divider()
 
-# ==========================================
-# PEMASUKAN & PENGELUARAN
-# ==========================================
 mc1, mc2 = st.columns(2)
 mc1.metric("📥 Total Masuk", rupiah(total_masuk))
 mc2.metric("📤 Total Keluar", rupiah(total_keluar))
 
 st.divider()
 
-# ==========================================
-# WARNING BATAS HARIAN
-# ==========================================
+# ── WARNING HARIAN ──
 level, pesan = cek_warning_harian(df_kas, df_pg)
-
 if level == "bahaya":
     st.error(pesan)
 elif level == "warning":
     st.warning(pesan)
 
-# ==========================================
-# INFO KEUANGAN BULANAN
-# ==========================================
+# ── INFO BULANAN ──
 gaji = get_gaji(df_pg)
 pengeluaran_tetap = hitung_pengeluaran_tetap_bulanan(df_pg)
 hasil_bersih = hitung_hasil_bersih_bulanan(df_pg)
 pengeluaran_harian = hitung_pengeluaran_harian(df_pg)
 sisa_hari = get_sisa_hari_bulan_ini()
 
-# Tabungan
 d_tabungan = get_pengaturan(df_pg, "TABUNGAN")
 tabungan = to_float(d_tabungan.iloc[0]["Nominal"]) if not d_tabungan.empty else 0
 
@@ -213,21 +189,19 @@ with st.expander("📊 Info Keuangan Bulan Ini", expanded=False):
                 f"lebih kecil dari pengeluaran tetap harian ({rupiah(pengeluaran_harian)})"
             )
 
-# ==========================================
-# FOOTER
-# ==========================================
+# ── FOOTER ──
 st.markdown(
     """
     <div style="text-align:center; padding:30px 0 10px 0;
                 border-top:1px solid #1e1e2a; margin-top:20px;">
         <p style="font-family:'Poppins',sans-serif;
                   font-size:0.55rem; font-weight:400;
-                  color:#3a3a4a; margin:0;">
-            Keuangan Pribadi • Financial Tracker
+                  color:#3a3a4a; margin:0; text-align:center;">
+            Keuangan Pribadi - Financial Tracker
         </p>
         <p style="font-family:'Poppins',sans-serif;
                   font-size:0.65rem; font-weight:600;
-                  color:#5a5a6a; margin:2px 0 0 0;">
+                  color:#5a5a6a; margin:2px 0 0 0; text-align:center;">
             M. Luthfi Renaldi
         </p>
     </div>
