@@ -61,12 +61,12 @@ if not df_pg_batas.empty:
     batas_aktif = str(df_pg_batas.iloc[0]["Status"]).strip().upper() == "AKTIF"
 
 if batas_aktif:
-    saldo_siap = hitung_saldo_siap_pakai(df_kas, df_pg)
-    sisa_hari = get_sisa_hari_bulan_ini()
-    keluar_val = hitung_pengeluaran_hari_ini(df_kas)
+    saldo_siap = to_float(hitung_saldo_siap_pakai(df_kas, df_pg))
+    sisa_hari = int(get_sisa_hari_bulan_ini())
+    keluar_val = to_float(hitung_pengeluaran_hari_ini(df_kas))
 
-    batas_val = saldo_siap / sisa_hari if sisa_hari > 0 and saldo_siap > 0 else 0
-    sisa_val = batas_val - keluar_val
+    batas_val = (saldo_siap / sisa_hari) if (sisa_hari > 0 and saldo_siap > 0) else 0.0
+    sisa_val = float(batas_val) - float(keluar_val)
 
     x1, x2, x3 = st.columns(3)
     x1.metric("🎯 Batas", rupiah(batas_val))
