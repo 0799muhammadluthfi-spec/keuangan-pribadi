@@ -1,31 +1,19 @@
-# ==========================================
-# utils/helpers.py
-# ==========================================
 import streamlit as st
 import pandas as pd
 import calendar
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-# ==========================================
-# TIMEZONE
-# ==========================================
 def now_wita():
     return datetime.now(ZoneInfo("Asia/Makassar"))
 
 def today_wita():
     return now_wita().date()
 
-# ==========================================
-# NAMA WORKSHEET
-# ==========================================
 WS_KAS = "DATA_KAS"
 WS_PENGATURAN = "PENGATURAN"
 WS_PENGECEKAN = "PENGECEKAN"
 
-# ==========================================
-# KOLOM STANDAR
-# ==========================================
 KOLOM_KAS = [
     "No", "Tanggal", "Keterangan",
     "Jenis_Transaksi", "Nominal",
@@ -47,9 +35,6 @@ KOLOM_PENGECEKAN = [
     "Selisih", "Status_Aktif"
 ]
 
-# ==========================================
-# FORMAT & KONVERSI
-# ==========================================
 def to_float(val):
     try:
         txt = str(val).strip().replace(",", "")
@@ -111,9 +96,6 @@ def get_jumlah_minggu_bulan_ini():
         return 4
     return 5
 
-# ==========================================
-# DATAFRAME
-# ==========================================
 def get_empty_df(worksheet):
     if worksheet == WS_KAS:
         return pd.DataFrame(columns=KOLOM_KAS)
@@ -149,9 +131,6 @@ def tampilkan_n_terakhir(df, n=30):
     except:
         return df
 
-# ==========================================
-# LOAD & SAVE
-# ==========================================
 def load_data(conn_obj, worksheet):
     try:
         df = conn_obj.read(worksheet=worksheet, ttl=60)
@@ -186,9 +165,6 @@ def tombol_refresh(key_btn):
         st.cache_data.clear()
         st.rerun()
 
-# ==========================================
-# SALDO
-# ==========================================
 def get_last_saldo(df_kas):
     try:
         if df_kas.empty:
@@ -227,18 +203,15 @@ def hitung_pengeluaran_hari_ini(df_kas):
         if df_kas.empty:
             return 0.0
         d = df_kas[df_kas["No"] != "-"].copy()
-        if "Jenis_Transaksi" not in d.columns or "Tanggal" not in d.columns:
+        if "Jenis_Transaksi" not in d.columns:
             return 0.0
         hari_ini = today_wita().strftime("%d/%m/%Y")
         d["_tgl"] = d["Tanggal"].astype(str).str.strip().str.replace("-", "/", regex=False)
-        d_hari = d[(d["_tgl"] == hari_ini) & (d["Jenis_Transaksi"] == "KELUAR")]
-        return d_hari["Nominal"].apply(to_float).sum()
+        d_h = d[(d["_tgl"] == hari_ini) & (d["Jenis_Transaksi"] == "KELUAR")]
+        return d_h["Nominal"].apply(to_float).sum()
     except:
         return 0.0
 
-# ==========================================
-# PENGATURAN
-# ==========================================
 def get_pengaturan(df_pg, jenis):
     try:
         if df_pg.empty:
@@ -340,40 +313,6 @@ def hitung_batas_harian(df_kas, df_pg):
     except:
         return 0.0
 
-def hitung_sisa_batas_hari_ini(df_kas, df_pg):
-    try:
-        return hitung_batas_harian(df_kas, df_pg) - hitung_pengeluaran_hari_ini(df_kas)
-    except:
-        return 0.0
-
-def get_status_batas_harian(df_kas, df_pg):
-    try:
-        batas = hitung_batas_harian(df_kas, df_pg)
-        keluar = hitung_pengeluaran_hari_ini(df_kas)
-        sisa = batas - keluar
-
-        if batas <= 0:
-            return "bahaya", "❌ Saldo siap pakai sudah habis.", 0, 0, 0
-
-        if keluar <= 0:
-            return "hijau", f"✅ Belum ada pengeluaran hari ini. Batas penuh {rupiah(batas)}", batas, batas, 0
-
-        persen = (sisa / batas) * 100 if batas > 0 else 0
-
-        if sisa < 0:
-            return "bahaya", f"🚨 Melebihi batas harian! Over {rupiah(abs(sisa))}", batas, sisa, keluar
-        elif persen < 20:
-            return "merah", f"❌ Sisa batas tinggal {rupiah(sisa)} ({persen:.0f}%)", batas, sisa, keluar
-        elif persen < 50:
-            return "kuning", f"⚠️ Sisa batas {rupiah(sisa)} ({persen:.0f}%)", batas, sisa, keluar
-        else:
-            return "hijau", f"✅ Masih aman. Sisa {rupiah(sisa)} ({persen:.0f}%)", batas, sisa, keluar
-    except:
-        return "aman", "", 0, 0, 0
-
-# ==========================================
-# SELISIH
-# ==========================================
 def get_selisih_aktif(df_cek):
     try:
         if df_cek.empty:
