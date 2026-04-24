@@ -108,14 +108,14 @@ if aktif_batas != batas_aktif_default:
     safe_update(conn, WS_PENGATURAN, df_u)
 
 if aktif_batas:
-    saldo_siap = hitung_saldo_siap_pakai(df_kas, df_pg)
-    beban_sisa = hitung_beban_belum_bayar(df_pg)
-    tabungan_val = get_tabungan(df_pg)
-    sisa_hari = get_sisa_hari_bulan_ini()
-    keluar = hitung_pengeluaran_hari_ini(df_kas)
+    saldo_siap = to_float(hitung_saldo_siap_pakai(df_kas, df_pg))
+    beban_sisa = to_float(hitung_beban_belum_bayar(df_pg))
+    tabungan_val = to_float(get_tabungan(df_pg))
+    sisa_hari = int(get_sisa_hari_bulan_ini())
+    keluar = to_float(hitung_pengeluaran_hari_ini(df_kas))
 
-    batas = saldo_siap / sisa_hari if sisa_hari > 0 and saldo_siap > 0 else 0
-    sisa = batas - keluar
+    batas = (saldo_siap / sisa_hari) if (sisa_hari > 0 and saldo_siap > 0) else 0.0
+    sisa = float(batas) - float(keluar)
 
     b1, b2 = st.columns(2)
     b1.metric("💰 Saldo Siap Pakai", rupiah(saldo_siap))
