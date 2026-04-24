@@ -6,28 +6,20 @@ from streamlit_gsheets import GSheetsConnection
 
 from utils.css_styles import inject_css, inject_opening_css, render_top_nav
 from utils.helpers import (
-    WS_KAS,
-    WS_PENGATURAN,
-    KOLOM_KAS,
-    KOLOM_PENGATURAN,
-    load_data,
-    pastikan_kolom,
-    rupiah,
-    get_last_saldo,
-    hitung_ringkasan,
+    WS_KAS, WS_PENGATURAN,
+    KOLOM_KAS, KOLOM_PENGATURAN,
+    load_data, pastikan_kolom, rupiah,
+    get_last_saldo, hitung_ringkasan,
     get_sisa_hari_bulan_ini,
     hitung_hasil_bersih_bulanan,
-    get_gaji,
+    get_gaji, get_tabungan,
     hitung_pengeluaran_tetap_bulanan,
-    get_pengaturan,
-    to_float,
+    hitung_beban_belum_bayar,
+    hitung_saldo_siap_pakai,
     hitung_batas_harian,
-    hitung_beban_belum_bayar
+    get_pengaturan, to_float
 )
 
-# ==========================================
-# KONFIGURASI
-# ==========================================
 st.set_page_config(
     page_title="Keuangan Pribadi",
     page_icon="💰",
@@ -37,14 +29,9 @@ st.set_page_config(
 
 inject_css()
 
-# ==========================================
-# KONEKSI
-# ==========================================
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# ==========================================
-# OPENING SCREEN
-# ==========================================
+# ── OPENING ──
 if "opening_done" not in st.session_state:
     st.session_state["opening_done"] = False
 
@@ -79,23 +66,17 @@ if not st.session_state["opening_done"]:
 
     st.stop()
 
-# ==========================================
-# NAVIGATION
-# ==========================================
+# ── NAVIGATION ──
 render_top_nav(active="home")
 
-# ==========================================
-# LOAD DATA
-# ==========================================
+# ── LOAD DATA ──
 df_kas = load_data(conn, WS_KAS)
 df_kas = pastikan_kolom(df_kas, KOLOM_KAS)
 
 df_pg = load_data(conn, WS_PENGATURAN)
 df_pg = pastikan_kolom(df_pg, KOLOM_PENGATURAN)
 
-# ==========================================
-# HEADER
-# ==========================================
+# ── HEADER ──
 st.markdown(
     """
     <div style="text-align:center; padding: 10px 0 5px 0;">
@@ -119,9 +100,7 @@ st.markdown(
 
 st.divider()
 
-# ==========================================
-# RINGKASAN SALDO
-# ==========================================
+# ── RINGKASAN SALDO ──
 last_seluruh, last_kas, last_atm, last_shopee = get_last_saldo(df_kas)
 total_masuk, total_keluar = hitung_ringkasan(df_kas)
 
@@ -164,9 +143,7 @@ mc2.metric("📤 Total Keluar", rupiah(total_keluar))
 
 st.divider()
 
-# ==========================================
-# BATAS HARIAN
-# ==========================================
+# ── BATAS HARIAN ──
 aktif_batas = st.toggle(
     "📅 Aktifkan Batas Harian",
     value=False,
@@ -176,16 +153,20 @@ aktif_batas = st.toggle(
 if aktif_batas:
     batas = hitung_batas_harian(df_kas, df_pg)
     beban_sisa = hitung_beban_belum_bayar(df_pg)
+    tabungan = get_tabungan(df_pg)
     sisa_hari = get_sisa_hari_bulan_ini()
-    saldo_siap = last_seluruh - beban_sisa
+    saldo_siap = hitung_saldo_siap_pakai(df_kas, df_pg)
 
     b1, b2 = st.columns(2)
     b1.metric("💰 Saldo Siap Pakai", rupiah(saldo_siap))
     b2.metric("🎯 Batas Harian", rupiah(batas))
 
     st.caption(
-        f"Total saldo ({rupiah(last_seluruh)}) - beban belum bayar ({rupiah(beban_sisa)}) "
-        f"= {rupiah(saldo_siap)} dibagi sisa {sisa_hari} hari"
+        f"Total saldo ({rupiah(last_seluruh)}) "
+        f"- beban ({rupiah(beban_sisa)}) "
+        f"- tabungan ({rupiah(tabungan)}) "
+        f"= {rupiah(saldo_siap)} "
+        f"dibagi sisa {sisa_hari} hari"
     )
 
     if batas <= 0:
@@ -195,16 +176,12 @@ if aktif_batas:
 
 st.divider()
 
-# ==========================================
-# INFO BULANAN
-# ==========================================
+# ── INFO BULANAN ──
 gaji = get_gaji(df_pg)
 pengeluaran_tetap = hitung_pengeluaran_tetap_bulanan(df_pg)
 hasil_bersih = hitung_hasil_bersih_bulanan(df_pg)
 sisa_hari = get_sisa_hari_bulan_ini()
-
-d_tabungan = get_pengaturan(df_pg, "TABUNGAN")
-tabungan = to_float(d_tabungan.iloc[0]["Nominal"]) if not d_tabungan.empty else 0
+tabungan = get_tabungan(df_pg)
 
 with st.expander("📊 Info Keuangan Bulan Ini", expanded=False):
     i1, i2 = st.columns(2)
@@ -221,9 +198,7 @@ with st.expander("📊 Info Keuangan Bulan Ini", expanded=False):
     i5.metric("📅 Sisa Hari", f"{sisa_hari} hari")
     i6.metric("⏳ Beban Belum Bayar", rupiah(hitung_beban_belum_bayar(df_pg)))
 
-# ==========================================
-# FOOTER
-# ==========================================
+# ── FOOTER ──
 st.markdown(
     """
     <div style="text-align:center; padding:30px 0 10px 0;
