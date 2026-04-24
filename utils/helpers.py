@@ -264,6 +264,15 @@ def get_gaji(df_pg: pd.DataFrame) -> float:
     except:
         return 0.0
 
+def get_tabungan(df_pg: pd.DataFrame) -> float:
+    try:
+        d = get_pengaturan(df_pg, "TABUNGAN")
+        if d.empty:
+            return 0.0
+        return to_float(d.iloc[0]["Nominal"])
+    except:
+        return 0.0
+
 def hitung_pengeluaran_tetap_bulanan(df_pg: pd.DataFrame) -> float:
     try:
         d = get_pengaturan(df_pg, "PENGELUARAN")
@@ -306,6 +315,8 @@ def hitung_beban_belum_bayar(df_pg: pd.DataFrame) -> float:
                 if bulan_bayar != bulan_ini:
                     total += nominal
             elif periode == "SEMINGGU":
+                if bulan_bayar != bulan_ini:
+                    counter = 0
                 sisa_bayar = jml_minggu - counter
                 if sisa_bayar > 0:
                     total += nominal * sisa_bayar
@@ -316,13 +327,8 @@ def hitung_beban_belum_bayar(df_pg: pd.DataFrame) -> float:
 
 def hitung_pengeluaran_harian(df_pg: pd.DataFrame) -> float:
     try:
-        d = get_pengaturan(df_pg, "PENGELUARAN")
-        if d.empty:
-            return 0.0
-
         total_bulanan = hitung_pengeluaran_tetap_bulanan(df_pg)
         jumlah_hari = get_jumlah_hari_bulan_ini()
-
         return total_bulanan / jumlah_hari if jumlah_hari > 0 else 0.0
     except:
         return 0.0
@@ -331,23 +337,24 @@ def hitung_hasil_bersih_bulanan(df_pg: pd.DataFrame) -> float:
     try:
         gaji = get_gaji(df_pg)
         pengeluaran = hitung_pengeluaran_tetap_bulanan(df_pg)
-
-        d_tabungan = get_pengaturan(df_pg, "TABUNGAN")
-        tabungan = 0.0
-        if not d_tabungan.empty:
-            tabungan = to_float(d_tabungan.iloc[0]["Nominal"])
-
+        tabungan = get_tabungan(df_pg)
         return gaji - pengeluaran - tabungan
+    except:
+        return 0.0
+
+def hitung_saldo_siap_pakai(df_kas, df_pg) -> float:
+    try:
+        last_seluruh, _, _, _ = get_last_saldo(df_kas)
+        beban_sisa = hitung_beban_belum_bayar(df_pg)
+        tabungan = get_tabungan(df_pg)
+        return last_seluruh - beban_sisa - tabungan
     except:
         return 0.0
 
 def hitung_batas_harian(df_kas, df_pg) -> float:
     try:
-        last_seluruh, _, _, _ = get_last_saldo(df_kas)
-        beban_sisa = hitung_beban_belum_bayar(df_pg)
+        saldo_siap = hitung_saldo_siap_pakai(df_kas, df_pg)
         sisa_hari = get_sisa_hari_bulan_ini()
-
-        saldo_siap = last_seluruh - beban_sisa
 
         if sisa_hari > 0 and saldo_siap > 0:
             return saldo_siap / sisa_hari
