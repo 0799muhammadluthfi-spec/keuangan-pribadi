@@ -7,24 +7,15 @@ from streamlit_gsheets import GSheetsConnection
 
 from utils.css_styles import inject_css, render_top_nav
 from utils.helpers import (
-    WS_KAS,
-    WS_PENGATURAN,
-    WS_PENGECEKAN,
-    KOLOM_KAS,
-    KOLOM_PENGATURAN,
-    KOLOM_PENGECEKAN,
-    load_data,
-    safe_update,
-    get_next_no,
-    pastikan_kolom,
-    tampilkan_n_terakhir,
-    tombol_refresh,
-    to_float,
-    fmt_nominal,
-    rupiah,
-    get_last_saldo,
-    hitung_ringkasan,
+    WS_KAS, WS_PENGATURAN, WS_PENGECEKAN,
+    KOLOM_KAS, KOLOM_PENGATURAN, KOLOM_PENGECEKAN,
+    load_data, safe_update,
+    get_next_no, pastikan_kolom,
+    tampilkan_n_terakhir, tombol_refresh,
+    to_float, fmt_nominal, rupiah,
+    get_last_saldo, hitung_ringkasan,
     get_selisih_aktif,
+    get_status_batas_harian,
     get_sisa_hari_bulan_ini,
     today_wita
 )
@@ -37,7 +28,6 @@ st.set_page_config(
 )
 
 inject_css()
-
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 if "kas_rc" not in st.session_state:
@@ -46,30 +36,20 @@ if "kas_rc" not in st.session_state:
 def reset_form():
     st.session_state["kas_rc"] += 1
 
-# ── NAVIGATION ──
 render_top_nav(active="kas")
 
-# ── LOAD DATA ──
 df_kas = load_data(conn, WS_KAS)
 df_kas = pastikan_kolom(df_kas, KOLOM_KAS)
-
 df_pg = load_data(conn, WS_PENGATURAN)
 df_pg = pastikan_kolom(df_pg, KOLOM_PENGATURAN)
-
 df_cek = load_data(conn, WS_PENGECEKAN)
 df_cek = pastikan_kolom(df_cek, KOLOM_PENGECEKAN)
 
 # ── HEADER ──
 st.markdown(
-    """
-    <div style="text-align:center; padding:5px 0;">
-        <p style="font-family:'Poppins',sans-serif;
-                  font-size:1.3rem; font-weight:700;
-                  color:#f5f5f5; margin:0; text-align:center;">
-            💰 Keuangan
-        </p>
-    </div>
-    """,
+    '<div style="text-align:center; padding:5px 0;">'
+    '<p style="font-family:\'Poppins\',sans-serif; font-size:1.3rem; font-weight:700;'
+    'color:#f5f5f5; margin:0; text-align:center;">💰 Keuangan</p></div>',
     unsafe_allow_html=True
 )
 
@@ -89,105 +69,74 @@ r2c3.metric("🛒 Shopee", rupiah(last_shopee))
 
 st.divider()
 
-# ── BATAS HARIAN ──
-aktif_batas = st.toggle(
-    "📅 Aktifkan Batas Harian",
-    value=False,
-    key="toggle_batas_kas"
-)
+# ── WARNING BATAS HARIAN ──
+# Cek apakah batas harian aktif di pengaturan
+df_pg_batas = df_pg[
+    (df_pg["Jenis"] == "SETTING") &
+    (df_pg["Nama"] == "BATAS_HARIAN")
+]
+batas_aktif = False
+if not df_pg_batas.empty:
+    batas_aktif = str(df_pg_batas.iloc[0]["Status"]).strip().upper() == "AKTIF"
 
-if aktif_batas:
-    sisa_hari = get_sisa_hari_bulan_ini()
+if batas_aktif:
+    status, pesan, batas, sisa, keluar = get_status_batas_harian(df_kas, df_pg)
 
-    if last_kas > 0 and sisa_hari > 0:
-        batas_harian = last_kas / sisa_hari
+    if status == "bahaya":
+        st.error(pesan)
+    elif status == "merah":
+        st.error(pesan)
+    elif status == "kuning":
+        st.warning(pesan)
+    elif status == "hijau":
+        st.success(pesan)
 
-        st.metric("💰 Batas Harian", rupiah(batas_harian))
-        st.caption(
-            f"Saldo di tangan ({rupiah(last_kas)}) dibagi "
-            f"sisa {sisa_hari} hari"
-        )
-
-        if batas_harian <= 0:
-            st.error("❌ Saldo habis!")
-        elif batas_harian < 50000:
-            st.warning(
-                f"⚠️ Batas harian tinggal **{rupiah(batas_harian)}**"
-            )
-    else:
-        st.info("Belum ada saldo untuk menghitung batas harian.")
-
-    st.divider()
-
-# ── ALERT SELISIH AKTIF ──
+# ── ALERT SELISIH ──
 ada_selisih, nilai_selisih, tgl_selisih = get_selisih_aktif(df_cek)
 if ada_selisih:
     if nilai_selisih > 0:
-        st.error(
-            f"❌ **SELISIH AKTIF: KURANG {rupiah(nilai_selisih)}** "
-            f"(Pengecekan: {tgl_selisih})"
-        )
+        st.error(f"❌ **SELISIH: KURANG {rupiah(nilai_selisih)}** ({tgl_selisih})")
     else:
-        st.success(
-            f"✅ **SELISIH AKTIF: LEBIH {rupiah(abs(nilai_selisih))}** "
-            f"(Pengecekan: {tgl_selisih})"
-        )
+        st.success(f"✅ **SELISIH: LEBIH {rupiah(abs(nilai_selisih))}** ({tgl_selisih})")
 
-# ── PENGECEKAN SELISIH ──
-cek_selisih = st.toggle(
-    "🔎 Cek Selisih Keuangan",
-    value=False,
-    key="toggle_cek_selisih"
-)
+# ── CEK SELISIH ──
+cek = st.toggle("🔎 Cek Selisih", value=False, key="toggle_cek")
 
-if cek_selisih:
-    st.info("Hanya untuk pengecekan. Tidak mengubah transaksi.")
+if cek:
+    st.info("Hanya untuk pengecekan.")
     st.metric("💵 Di Tangan (Sistem)", rupiah(last_kas))
 
     kas_fisik = st.number_input(
-        "Input Uang Fisik di Tangan",
+        "Uang Fisik di Tangan",
         value=float(last_kas),
-        step=1000.0,
-        format="%.0f",
+        step=1000.0, format="%.0f",
         key="input_cek_fisik"
     )
-
     if kas_fisik > 0:
         st.caption(f"💰 {rupiah(kas_fisik)}")
 
     selisih = last_kas - kas_fisik
-
     if selisih > 0.5:
         st.warning(f"⚠️ **KURANG: {rupiah(selisih)}**")
     elif selisih < -0.5:
         st.success(f"✅ **LEBIH: {rupiah(abs(selisih))}**")
     else:
-        st.success("✅ **PAS / Rp 0**")
+        st.success("✅ **PAS**")
 
-    if st.button(
-        "💾 Simpan Hasil Pengecekan",
-        type="primary",
-        use_container_width=True,
-        key="btn_simpan_cek"
-    ):
+    if st.button("💾 Simpan Pengecekan", type="primary", use_container_width=True, key="btn_cek"):
         next_no_cek = get_next_no(df_cek)
-        status = "YA" if abs(selisih) > 0.5 else "TIDAK"
-
+        status_cek = "YA" if abs(selisih) > 0.5 else "TIDAK"
         row_cek = {
             "No": str(next_no_cek),
             "Tanggal": today_wita().strftime("%d/%m/%Y"),
             "Kas_Fisik": fmt_nominal(kas_fisik),
             "Kas_Sistem": fmt_nominal(last_kas),
             "Selisih": fmt_nominal(selisih),
-            "Status_Aktif": status
+            "Status_Aktif": status_cek
         }
-
-        df_cek_baru = pd.concat(
-            [df_cek, pd.DataFrame([row_cek])],
-            ignore_index=True
-        )
+        df_cek_baru = pd.concat([df_cek, pd.DataFrame([row_cek])], ignore_index=True)
         if safe_update(conn, WS_PENGECEKAN, df_cek_baru):
-            st.success("✅ Hasil pengecekan disimpan!")
+            st.success("✅ Disimpan!")
             st.rerun()
 
 st.divider()
@@ -195,40 +144,21 @@ st.divider()
 # ── TAB ──
 tab1, tab2 = st.tabs(["📝 Input Keuangan", "📊 Data Keuangan"])
 
-# ── TAB 1 — INPUT ──
 with tab1:
     rc = st.session_state["kas_rc"]
 
-    c_head, c_btn = st.columns([0.88, 0.12])
-    c_head.subheader("📝 Input Transaksi")
-    with c_btn:
+    c_h, c_b = st.columns([0.88, 0.12])
+    c_h.subheader("📝 Input Transaksi")
+    with c_b:
         tombol_refresh("ref_kas_input")
 
     c1, c2 = st.columns(2)
     with c1:
-        tanggal = st.text_input(
-            "Tanggal",
-            value=today_wita().strftime("%d/%m/%Y"),
-            key=f"k_{rc}_tgl"
-        )
-        keterangan_raw = st.text_input(
-            "Keterangan",
-            key=f"k_{rc}_ket"
-        )
+        tanggal = st.text_input("Tanggal", value=today_wita().strftime("%d/%m/%Y"), key=f"k_{rc}_tgl")
+        ket_raw = st.text_input("Keterangan", key=f"k_{rc}_ket")
     with c2:
-        jenis = st.selectbox(
-            "Jenis Transaksi",
-            ["MASUK", "KELUAR"],
-            key=f"k_{rc}_jenis"
-        )
-        nominal = st.number_input(
-            "Nominal",
-            min_value=0.0,
-            value=0.0,
-            step=1000.0,
-            format="%.0f",
-            key=f"k_{rc}_nom"
-        )
+        jenis = st.selectbox("Jenis", ["MASUK", "KELUAR"], key=f"k_{rc}_jenis")
+        nominal = st.number_input("Nominal", min_value=0.0, value=0.0, step=1000.0, format="%.0f", key=f"k_{rc}_nom")
 
     if nominal > 0:
         st.caption(f"💰 {rupiah(nominal)}")
@@ -238,74 +168,53 @@ with tab1:
 
     if jenis == "MASUK":
         st.divider()
-        tujuan = st.selectbox(
-            "🎯 Tujuan Anggaran",
-            ["SALDO KAS (DI TANGAN)", "UANG DI ATM", "UANG DI SHOPEE"],
-            key=f"k_{rc}_tujuan"
-        )
+        tujuan = st.selectbox("🎯 Tujuan", ["SALDO KAS (DI TANGAN)", "UANG DI ATM", "UANG DI SHOPEE"], key=f"k_{rc}_tujuan")
     else:
         st.divider()
-        sumber = st.selectbox(
-            "💳 Sumber Anggaran",
-            ["UANG KAS (DI TANGAN)", "UANG DI ATM", "UANG DI SHOPEE"],
-            key=f"k_{rc}_sumber"
-        )
-
+        sumber = st.selectbox("💳 Sumber", ["UANG KAS (DI TANGAN)", "UANG DI ATM", "UANG DI SHOPEE"], key=f"k_{rc}_sumber")
         if sumber == "UANG KAS (DI TANGAN)" and nominal > last_kas and nominal > 0:
-            st.warning(f"⚠️ Melebihi saldo di tangan ({rupiah(last_kas)})")
+            st.warning(f"⚠️ Melebihi saldo tangan ({rupiah(last_kas)})")
         elif sumber == "UANG DI ATM" and nominal > last_atm and nominal > 0:
             st.warning(f"⚠️ Melebihi saldo ATM ({rupiah(last_atm)})")
         elif sumber == "UANG DI SHOPEE" and nominal > last_shopee and nominal > 0:
             st.warning(f"⚠️ Melebihi saldo Shopee ({rupiah(last_shopee)})")
 
-    # Hitung saldo baru
     if jenis == "MASUK":
         if tujuan == "SALDO KAS (DI TANGAN)":
-            new_kas, new_atm, new_shopee = last_kas + nominal, last_atm, last_shopee
+            nk, na, ns = last_kas + nominal, last_atm, last_shopee
         elif tujuan == "UANG DI ATM":
-            new_kas, new_atm, new_shopee = last_kas, last_atm + nominal, last_shopee
+            nk, na, ns = last_kas, last_atm + nominal, last_shopee
         else:
-            new_kas, new_atm, new_shopee = last_kas, last_atm, last_shopee + nominal
+            nk, na, ns = last_kas, last_atm, last_shopee + nominal
     else:
         if sumber == "UANG KAS (DI TANGAN)":
-            new_kas, new_atm, new_shopee = last_kas - nominal, last_atm, last_shopee
+            nk, na, ns = last_kas - nominal, last_atm, last_shopee
         elif sumber == "UANG DI ATM":
-            new_kas, new_atm, new_shopee = last_kas, last_atm - nominal, last_shopee
+            nk, na, ns = last_kas, last_atm - nominal, last_shopee
         else:
-            new_kas, new_atm, new_shopee = last_kas, last_atm, last_shopee - nominal
+            nk, na, ns = last_kas, last_atm, last_shopee - nominal
 
-    total_baru = new_kas + new_atm + new_shopee
+    total_baru = nk + na + ns
 
     if nominal > 0:
         st.divider()
-        st.subheader("🏦 Preview Saldo")
+        st.subheader("🏦 Preview")
         h1, h2 = st.columns(2)
-        h1.metric("💵 Tangan", rupiah(new_kas))
-        h2.metric("🏧 ATM", rupiah(new_atm))
-
+        h1.metric("💵 Tangan", rupiah(nk))
+        h2.metric("🏧 ATM", rupiah(na))
         h3, h4 = st.columns(2)
-        h3.metric("🛒 Shopee", rupiah(new_shopee))
+        h3.metric("🛒 Shopee", rupiah(ns))
         h4.metric("🏦 Total", rupiah(total_baru))
 
     st.divider()
     b1, b2 = st.columns(2)
     with b1:
-        simpan = st.button(
-            "💾 Simpan",
-            type="primary",
-            use_container_width=True,
-            key="btn_simpan_kas"
-        )
+        simpan = st.button("💾 Simpan", type="primary", use_container_width=True, key="btn_simpan")
     with b2:
-        st.button(
-            "🔄 Reset",
-            use_container_width=True,
-            key="btn_reset_kas",
-            on_click=reset_form
-        )
+        st.button("🔄 Reset", use_container_width=True, key="btn_reset", on_click=reset_form)
 
     if simpan:
-        keterangan = keterangan_raw.strip().upper()
+        keterangan = ket_raw.strip().upper()
         if not keterangan:
             st.error("❌ Keterangan wajib diisi.")
         elif nominal <= 0:
@@ -313,76 +222,42 @@ with tab1:
         else:
             next_no = get_next_no(df_kas)
             new_row = {
-                "No": str(next_no),
-                "Tanggal": tanggal,
-                "Keterangan": keterangan,
-                "Jenis_Transaksi": jenis,
-                "Nominal": fmt_nominal(nominal),
+                "No": str(next_no), "Tanggal": tanggal, "Keterangan": keterangan,
+                "Jenis_Transaksi": jenis, "Nominal": fmt_nominal(nominal),
                 "Sumber_Anggaran": sumber if jenis == "KELUAR" else "-",
                 "Tujuan_Anggaran": tujuan if jenis == "MASUK" else "-",
-                "Sisa_Kas_Di_Tangan": fmt_nominal(new_kas),
-                "Sisa_ATM": fmt_nominal(new_atm),
-                "Sisa_Shopee": fmt_nominal(new_shopee),
-                "Sisa_Kas_Seluruh": fmt_nominal(total_baru),
+                "Sisa_Kas_Di_Tangan": fmt_nominal(nk), "Sisa_ATM": fmt_nominal(na),
+                "Sisa_Shopee": fmt_nominal(ns), "Sisa_Kas_Seluruh": fmt_nominal(total_baru),
                 "Catatan": "-"
             }
-
-            df_baru = pd.concat(
-                [df_kas, pd.DataFrame([new_row])],
-                ignore_index=True
-            )
+            df_baru = pd.concat([df_kas, pd.DataFrame([new_row])], ignore_index=True)
             if safe_update(conn, WS_KAS, df_baru):
-                st.success("✅ Transaksi berhasil disimpan!")
+                st.success("✅ Berhasil!")
                 reset_form()
                 st.rerun()
 
-# ── TAB 2 — DATA ──
 with tab2:
-    c_head2, c_btn2 = st.columns([0.88, 0.12])
-    c_head2.subheader("📊 Histori Transaksi")
-    with c_btn2:
+    c_h2, c_b2 = st.columns([0.88, 0.12])
+    c_h2.subheader("📊 Histori")
+    with c_b2:
         tombol_refresh("ref_kas_data")
 
     df_valid = df_kas[df_kas["No"] != "-"].copy()
-
     if df_valid.empty:
-        st.info("Belum ada data transaksi.")
+        st.info("Belum ada data.")
     else:
-        filter_jenis = st.selectbox(
-            "Filter",
-            ["Semua", "MASUK", "KELUAR", "TRANSFER"],
-            key="filter_kas"
-        )
-
-        if filter_jenis != "Semua":
-            df_valid = df_valid[df_valid["Jenis_Transaksi"] == filter_jenis]
-
-        kolom = [
-            "No", "Tanggal", "Keterangan",
-            "Jenis_Transaksi", "Nominal",
-            "Sumber_Anggaran", "Tujuan_Anggaran",
-            "Sisa_Kas_Di_Tangan", "Sisa_ATM",
-            "Sisa_Shopee", "Sisa_Kas_Seluruh"
-        ]
+        filt = st.selectbox("Filter", ["Semua", "MASUK", "KELUAR", "TRANSFER"], key="filter_kas")
+        if filt != "Semua":
+            df_valid = df_valid[df_valid["Jenis_Transaksi"] == filt]
+        kolom = ["No","Tanggal","Keterangan","Jenis_Transaksi","Nominal",
+                 "Sumber_Anggaran","Tujuan_Anggaran",
+                 "Sisa_Kas_Di_Tangan","Sisa_ATM","Sisa_Shopee","Sisa_Kas_Seluruh"]
         kolom_ada = [k for k in kolom if k in df_valid.columns]
+        st.dataframe(tampilkan_n_terakhir(df_valid, 30)[kolom_ada], use_container_width=True, hide_index=True)
 
-        st.dataframe(
-            tampilkan_n_terakhir(df_valid, 30)[kolom_ada],
-            use_container_width=True,
-            hide_index=True
-        )
-
-# ── FOOTER ──
 st.markdown(
-    """
-    <div style="text-align:center; padding:30px 0 10px 0;
-                border-top:1px solid #1e1e2a; margin-top:20px;">
-        <p style="font-family:'Poppins',sans-serif;
-                  font-size:0.55rem; font-weight:400;
-                  color:#3a3a4a; margin:0; text-align:center;">
-            Keuangan Pribadi - Financial Tracker
-        </p>
-    </div>
-    """,
+    '<div style="text-align:center; padding:30px 0 10px 0; border-top:1px solid #1e1e2a; margin-top:20px;">'
+    '<p style="font-family:\'Poppins\',sans-serif; font-size:0.55rem; color:#3a3a4a; margin:0; text-align:center;">'
+    'Keuangan Pribadi - Financial Tracker</p></div>',
     unsafe_allow_html=True
 )
