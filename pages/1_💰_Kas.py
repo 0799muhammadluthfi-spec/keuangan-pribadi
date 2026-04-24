@@ -56,21 +56,35 @@ if not df_pg_batas.empty:
     batas_aktif = str(df_pg_batas.iloc[0]["Status"]).strip().upper() == "AKTIF"
 
 if batas_aktif:
-    status, pesan, batas_val, sisa_val, keluar_val = get_status_batas_harian(df_kas, df_pg)
+    from utils.helpers import hitung_saldo_siap_pakai, hitung_pengeluaran_hari_ini
+
+    saldo_siap = hitung_saldo_siap_pakai(df_kas, df_pg)
+    sisa_hari = get_sisa_hari_bulan_ini()
+    keluar_val = hitung_pengeluaran_hari_ini(df_kas)
+
+    batas_val = saldo_siap / sisa_hari if sisa_hari > 0 and saldo_siap > 0 else 0
+    sisa_val = batas_val - keluar_val
 
     x1, x2, x3 = st.columns(3)
     x1.metric("🎯 Batas", rupiah(batas_val))
     x2.metric("📤 Keluar", rupiah(keluar_val))
     x3.metric("💵 Sisa", rupiah(sisa_val))
 
-    if status == "bahaya":
-        st.error(pesan)
-    elif status == "merah":
-        st.error(pesan)
-    elif status == "kuning":
-        st.warning(pesan)
-    elif status == "hijau":
-        st.success(pesan)
+    if batas_val <= 0:
+        st.error("❌ Tidak ada budget harian tersisa!")
+    else:
+        persen = (sisa_val / batas_val) * 100 if batas_val > 0 else 0
+
+        if keluar_val <= 0:
+            st.success(f"✅ Belum ada pengeluaran hari ini. Batas penuh {rupiah(batas_val)}")
+        elif sisa_val < 0:
+            st.error(f"🚨 Melebihi batas harian sebesar {rupiah(abs(sisa_val))}")
+        elif persen < 20:
+            st.error(f"❌ Sisa batas hari ini tinggal {rupiah(sisa_val)} ({persen:.0f}%)")
+        elif persen < 50:
+            st.warning(f"⚠️ Sisa batas hari ini {rupiah(sisa_val)} ({persen:.0f}%)")
+        else:
+            st.success(f"✅ Hari ini masih aman. Sisa batas {rupiah(sisa_val)} ({persen:.0f}%)")
 
     st.divider()
 
