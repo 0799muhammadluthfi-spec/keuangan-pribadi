@@ -416,7 +416,7 @@ with tab5:
     gaji = get_gaji(df_pg)
     total_beban = hitung_pengeluaran_tetap_bulanan(df_pg)
     beban_sisa = hitung_beban_belum_bayar(df_pg)
-    hasil_bersih = hitung_hasil_bersih_bulanan(df_pg)
+    hasil_bersih = hitung_saldo_siap_pakai(df_kas, df_pg)
     batas_harian = hitung_batas_harian(df_kas, df_pg)
 
     d_tab = get_pengaturan(df_pg, "TABUNGAN")
