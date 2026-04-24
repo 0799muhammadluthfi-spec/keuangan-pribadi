@@ -4,7 +4,7 @@
 import streamlit as st
 import pandas as pd
 import calendar
-from datetime import datetime, date
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 # ==========================================
@@ -19,7 +19,7 @@ def today_wita():
 # ==========================================
 # NAMA WORKSHEET
 # ==========================================
-WS_KAS        = "DATA_KAS"
+WS_KAS = "DATA_KAS"
 WS_PENGATURAN = "PENGATURAN"
 WS_PENGECEKAN = "PENGECEKAN"
 
@@ -59,7 +59,7 @@ KOLOM_PENGECEKAN = [
 ]
 
 # ==========================================
-# FUNGSI FORMAT & KONVERSI
+# FORMAT & KONVERSI
 # ==========================================
 def to_float(val) -> float:
     try:
@@ -114,7 +114,7 @@ def get_sisa_hari_bulan_ini() -> int:
     return total - hari_ini.day + 1
 
 # ==========================================
-# FUNGSI DATAFRAME
+# DATAFRAME
 # ==========================================
 def get_empty_df(worksheet: str) -> pd.DataFrame:
     if worksheet == WS_KAS:
@@ -152,7 +152,7 @@ def tampilkan_n_terakhir(df: pd.DataFrame, n: int = 30) -> pd.DataFrame:
         return df
 
 # ==========================================
-# FUNGSI LOAD & SAVE
+# LOAD & SAVE
 # ==========================================
 def load_data(conn_obj, worksheet: str) -> pd.DataFrame:
     try:
@@ -179,213 +179,4 @@ def load_data(conn_obj, worksheet: str) -> pd.DataFrame:
 
 def safe_update(conn_obj, worksheet: str, data: pd.DataFrame) -> bool:
     try:
-        conn_obj.update(worksheet=worksheet, data=data)
-        st.cache_data.clear()
-        return True
-    except Exception as e:
-        st.error(f"Gagal menyimpan ({worksheet}): {e}")
-        return False
-
-def tombol_refresh(key_btn: str):
-    if st.button("🔄", key=key_btn, use_container_width=True):
-        st.cache_data.clear()
-        st.rerun()
-
-# ==========================================
-# FUNGSI SALDO KAS
-# ==========================================
-def get_last_saldo(df_kas: pd.DataFrame):
-    try:
-        if df_kas.empty:
-            return 0.0, 0.0, 0.0, 0.0
-
-        d = df_kas[df_kas["No"] != "-"].copy()
-
-        # Abaikan record pengecekan
-        if "Jenis_Transaksi" in d.columns:
-            d = d[d["Jenis_Transaksi"] != "PENGECEKAN"]
-
-        if d.empty:
-            return 0.0, 0.0, 0.0, 0.0
-
-        d["_sort"] = pd.to_numeric(d["No"], errors="coerce")
-        d = d.sort_values("_sort", ascending=True)
-        last = d.iloc[-1]
-
-        kas     = to_float(last.get("Sisa_Kas_Di_Tangan", 0))
-        atm     = to_float(last.get("Sisa_ATM", 0))
-        shopee  = to_float(last.get("Sisa_Shopee", 0))
-        seluruh = kas + atm + shopee
-
-        return seluruh, kas, atm, shopee
-    except:
-        return 0.0, 0.0, 0.0, 0.0
-
-def hitung_ringkasan(df_kas: pd.DataFrame):
-    try:
-        if df_kas.empty:
-            return 0.0, 0.0
-
-        d = df_kas[df_kas["No"] != "-"].copy()
-
-        if "Jenis_Transaksi" not in d.columns:
-            return 0.0, 0.0
-
-        d = d[d["Jenis_Transaksi"].isin(["MASUK", "KELUAR"])]
-
-        total_masuk  = d[d["Jenis_Transaksi"] == "MASUK"]["Nominal"].apply(to_float).sum()
-        total_keluar = d[d["Jenis_Transaksi"] == "KELUAR"]["Nominal"].apply(to_float).sum()
-
-        return total_masuk, total_keluar
-    except:
-        return 0.0, 0.0
-
-# ==========================================
-# FUNGSI PENGATURAN
-# ==========================================
-def get_pengaturan(df_pg: pd.DataFrame, jenis: str):
-    try:
-        if df_pg.empty:
-            return pd.DataFrame()
-
-        result = df_pg[
-            (df_pg["Jenis"] == jenis) &
-            (df_pg["Status"] == "AKTIF")
-        ].copy()
-
-        return result
-    except:
-        return pd.DataFrame()
-
-def get_gaji(df_pg: pd.DataFrame) -> float:
-    try:
-        d = df_pg[
-            (df_pg["Jenis"] == "GAJI") &
-            (df_pg["Status"] == "AKTIF")
-        ]
-        if d.empty:
-            return 0.0
-        return to_float(d.iloc[0]["Nominal"])
-    except:
-        return 0.0
-
-def hitung_pengeluaran_tetap_bulanan(df_pg: pd.DataFrame) -> float:
-    try:
-        d = get_pengaturan(df_pg, "PENGELUARAN")
-        if d.empty:
-            return 0.0
-
-        total = 0.0
-        jumlah_hari = get_jumlah_hari_bulan_ini()
-
-        for _, row in d.iterrows():
-            nominal = to_float(row.get("Nominal", 0))
-            periode = str(row.get("Periode", "BULANAN")).strip().upper()
-
-            if periode == "HARIAN":
-                total += nominal * jumlah_hari
-            elif periode == "MINGGUAN":
-                total += nominal * 4
-            elif periode == "BULANAN":
-                total += nominal
-
-        return total
-    except:
-        return 0.0
-
-def hitung_pengeluaran_harian(df_pg: pd.DataFrame) -> float:
-    try:
-        d = get_pengaturan(df_pg, "PENGELUARAN")
-        if d.empty:
-            return 0.0
-
-        total = 0.0
-        jumlah_hari = get_jumlah_hari_bulan_ini()
-
-        for _, row in d.iterrows():
-            nominal = to_float(row.get("Nominal", 0))
-            periode = str(row.get("Periode", "BULANAN")).strip().upper()
-
-            if periode == "HARIAN":
-                total += nominal
-            elif periode == "MINGGUAN":
-                total += nominal / 7
-            elif periode == "BULANAN":
-                total += nominal / jumlah_hari
-
-        return total
-    except:
-        return 0.0
-
-def hitung_hasil_bersih_bulanan(df_pg: pd.DataFrame) -> float:
-    try:
-        gaji        = get_gaji(df_pg)
-        pengeluaran = hitung_pengeluaran_tetap_bulanan(df_pg)
-
-        d_tabungan = get_pengaturan(df_pg, "TABUNGAN")
-        tabungan = 0.0
-        if not d_tabungan.empty:
-            tabungan = to_float(d_tabungan.iloc[0]["Nominal"])
-
-        return gaji - pengeluaran - tabungan
-    except:
-        return 0.0
-
-# ==========================================
-# FUNGSI PENGECEKAN SELISIH
-# ==========================================
-def get_selisih_aktif(df_cek: pd.DataFrame):
-    try:
-        if df_cek.empty:
-            return False, 0.0, "-"
-
-        d = df_cek[df_cek["No"] != "-"].copy()
-        if d.empty:
-            return False, 0.0, "-"
-
-        d["_sort"] = pd.to_numeric(d["No"], errors="coerce")
-        d = d.sort_values("_sort", ascending=True)
-        last = d.iloc[-1]
-
-        status  = str(last.get("Status_Aktif", "TIDAK")).strip().upper()
-        selisih = to_float(last.get("Selisih", 0))
-        tgl     = str(last.get("Tanggal", "-")).strip()
-
-        if status == "YA" and abs(selisih) > 0.5:
-            return True, selisih, tgl
-        return False, 0.0, "-"
-    except:
-        return False, 0.0, "-"
-
-# ==========================================
-# FUNGSI WARNING BATAS HARIAN
-# ==========================================
-def cek_warning_harian(df_kas: pd.DataFrame, df_pg: pd.DataFrame):
-    try:
-        _, kas, _, _ = get_last_saldo(df_kas)
-        pengeluaran_harian = hitung_pengeluaran_harian(df_pg)
-        sisa_hari = get_sisa_hari_bulan_ini()
-
-        if pengeluaran_harian <= 0:
-            return "aman", ""
-
-        kebutuhan_sisa_bulan = pengeluaran_harian * sisa_hari
-        batas_harian = kas / sisa_hari if sisa_hari > 0 else 0
-
-        if kas <= 0:
-            return "bahaya", f"❌ Kas di tangan MINUS! Saldo tidak mencukupi."
-        elif kas < pengeluaran_harian:
-            return "bahaya", (
-                f"❌ Kas di tangan ({rupiah(kas)}) tidak cukup untuk "
-                f"pengeluaran hari ini ({rupiah(pengeluaran_harian)})!"
-            )
-        elif kas < kebutuhan_sisa_bulan:
-            return "warning", (
-                f"⚠️ Kas di tangan ({rupiah(kas)}) mungkin tidak cukup "
-                f"untuk sisa bulan ini ({sisa_hari} hari). "
-                f"Batas harian saat ini: {rupiah(batas_harian)}"
-            )
-        else:
-            return "aman", ""
-    except:
-        return "aman", ""
+        conn_obj.update(worksheet=worksheet, 
