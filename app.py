@@ -17,7 +17,7 @@ from utils.helpers import (
     hitung_ringkasan,
     hitung_pengeluaran_harian,
     get_sisa_hari_bulan_ini,
-    cek_warning_harian,
+    get_jumlah_hari_bulan_ini,
     hitung_hasil_bersih_bulanan,
     get_gaji,
     hitung_pengeluaran_tetap_bulanan,
@@ -88,7 +88,8 @@ st.markdown(
         <p style="font-family:'Poppins',sans-serif;
                   font-size:0.7rem; font-weight:500;
                   color:#5a5a6a; text-transform:uppercase;
-                  letter-spacing:0.1em; margin:0;">
+                  letter-spacing:0.1em; margin:0;
+                  text-align:center;">
             KEUANGAN PRIBADI
         </p>
         <p style="font-family:'Poppins',sans-serif;
@@ -147,18 +148,42 @@ mc2.metric("📤 Total Keluar", rupiah(total_keluar))
 
 st.divider()
 
-# ── WARNING HARIAN ──
-level, pesan = cek_warning_harian(df_kas, df_pg)
-if level == "bahaya":
-    st.error(pesan)
-elif level == "warning":
-    st.warning(pesan)
+# ── BATAS HARIAN ──
+aktif_batas = st.toggle(
+    "📅 Aktifkan Batas Harian",
+    value=False,
+    key="toggle_batas_home"
+)
+
+if aktif_batas:
+    sisa_hari = get_sisa_hari_bulan_ini()
+
+    if last_kas > 0 and sisa_hari > 0:
+        batas_harian = last_kas / sisa_hari
+
+        st.metric("💰 Batas Harian", rupiah(batas_harian))
+        st.caption(
+            f"Saldo di tangan ({rupiah(last_kas)}) dibagi "
+            f"sisa {sisa_hari} hari di bulan ini"
+        )
+
+        if batas_harian <= 0:
+            st.error("❌ Saldo habis! Tidak ada budget harian.")
+        elif batas_harian < 50000:
+            st.warning(
+                f"⚠️ Batas harian tinggal **{rupiah(batas_harian)}**. "
+                f"Pertimbangkan untuk mengurangi pengeluaran!"
+            )
+    else:
+        st.info("Belum ada saldo untuk menghitung batas harian.")
+
+st.divider()
 
 # ── INFO BULANAN ──
 gaji = get_gaji(df_pg)
 pengeluaran_tetap = hitung_pengeluaran_tetap_bulanan(df_pg)
 hasil_bersih = hitung_hasil_bersih_bulanan(df_pg)
-pengeluaran_harian = hitung_pengeluaran_harian(df_pg)
+pengeluaran_harian_pg = hitung_pengeluaran_harian(df_pg)
 sisa_hari = get_sisa_hari_bulan_ini()
 
 d_tabungan = get_pengaturan(df_pg, "TABUNGAN")
@@ -177,17 +202,7 @@ with st.expander("📊 Info Keuangan Bulan Ini", expanded=False):
 
     i5, i6 = st.columns(2)
     i5.metric("📅 Sisa Hari", f"{sisa_hari} hari")
-    i6.metric("💰 Batas Harian", rupiah(pengeluaran_harian))
-
-    if last_kas > 0 and sisa_hari > 0:
-        batas_riil = last_kas / sisa_hari
-        st.metric("🎯 Budget Harian Tersedia", rupiah(batas_riil))
-
-        if batas_riil < pengeluaran_harian:
-            st.warning(
-                f"⚠️ Budget harian ({rupiah(batas_riil)}) "
-                f"lebih kecil dari pengeluaran tetap harian ({rupiah(pengeluaran_harian)})"
-            )
+    i6.metric("💰 Pengeluaran Tetap/Hari", rupiah(pengeluaran_harian_pg))
 
 # ── FOOTER ──
 st.markdown(
