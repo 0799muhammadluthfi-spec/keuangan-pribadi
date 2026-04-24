@@ -137,12 +137,12 @@ if aktif_batas:
 
 st.divider()
 
-# ── WARNING HASIL BERSIH ──
-hasil_bersih = hitung_hasil_bersih_bulanan(df_pg)
-if hasil_bersih < 0:
+# ── WARNING SALDO SIAP PAKAI ──
+saldo_siap = hitung_saldo_siap_pakai(df_kas, df_pg)
+if saldo_siap < 0:
     st.error(
-        f"🚨 **PERINGATAN: Hasil bersih bulanan MINUS {rupiah(abs(hasil_bersih))}!** "
-        f"Pengeluaran tetap + tabungan melebihi gaji."
+        f"🚨 **PERINGATAN: Saldo siap pakai MINUS {rupiah(abs(saldo_siap))}!** "
+        f"Total saldo tidak cukup untuk menutup beban tetap dan tabungan."
     )
 
 # ── INFO BULANAN ──
