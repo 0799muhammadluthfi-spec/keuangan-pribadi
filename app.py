@@ -137,6 +137,14 @@ if aktif_batas:
 
 st.divider()
 
+# ── WARNING HASIL BERSIH ──
+hasil_bersih = hitung_hasil_bersih_bulanan(df_pg)
+if hasil_bersih < 0:
+    st.error(
+        f"🚨 **PERINGATAN: Hasil bersih bulanan MINUS {rupiah(abs(hasil_bersih))}!** "
+        f"Pengeluaran tetap + tabungan melebihi gaji."
+    )
+
 # ── INFO BULANAN ──
 gaji = get_gaji(df_pg)
 pengeluaran_tetap = hitung_pengeluaran_tetap_bulanan(df_pg)
