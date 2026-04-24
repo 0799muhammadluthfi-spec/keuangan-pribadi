@@ -7,7 +7,6 @@ CSS_GLOBAL = """
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-    /* ============ BASE ============ */
     .stApp,
     [data-testid="stAppViewContainer"],
     [data-testid="stMainBlockContainer"],
@@ -23,19 +22,16 @@ CSS_GLOBAL = """
     [data-testid="stStatusWidget"] { display: none !important; }
     button[title="View fullscreen"] { display: none !important; }
 
-    /* Hide sidebar completely */
     [data-testid="stSidebar"] { display: none !important; }
     [data-testid="collapsedControl"] { display: none !important; }
     [data-testid="stSidebarCollapsedControl"] { display: none !important; }
     section[data-testid="stSidebar"] { display: none !important; }
     button[kind="header"] { display: none !important; }
 
-    /* ============ SCROLLBAR ============ */
     ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
 
-    /* ============ BLOCK CONTAINER ============ */
     .main .block-container {
         max-width: 600px;
         margin: 0 auto;
@@ -57,7 +53,6 @@ CSS_GLOBAL = """
         }
     }
 
-    /* ============ TYPOGRAPHY ============ */
     .main h1, .main h2, .main h3,
     .main p, .main label, .main input,
     .main [data-testid="stMarkdownContainer"] p,
@@ -96,7 +91,6 @@ CSS_GLOBAL = """
         font-weight: 600 !important;
     }
 
-    /* ============ INPUT FIELDS ============ */
     .main .stTextInput label,
     .main .stNumberInput label,
     .main .stSelectbox label,
@@ -126,13 +120,11 @@ CSS_GLOBAL = """
         color: #4a4a5a !important;
     }
 
-    /* ============ SELECTBOX ============ */
     .main [data-baseweb="select"] {
         background: #13131a !important;
         border-radius: 10px !important;
     }
 
-    /* ============ METRIC ============ */
     [data-testid="stMetric"] {
         background: linear-gradient(135deg, #13131a 0%, #1a1a25 100%) !important;
         border: 1px solid #2a2a3a !important;
@@ -163,7 +155,6 @@ CSS_GLOBAL = """
         color: #f5f5f5 !important;
     }
 
-    /* ============ BUTTONS ============ */
     .main .stButton > button {
         font-size: 0.82rem !important;
         font-weight: 600 !important;
@@ -190,7 +181,6 @@ CSS_GLOBAL = """
         box-shadow: 0 6px 20px rgba(196,163,90,0.25) !important;
     }
 
-    /* ============ FORM ============ */
     [data-testid="stForm"] {
         background: #13131a !important;
         border: 1px solid #2a2a3a !important;
@@ -198,7 +188,6 @@ CSS_GLOBAL = """
         padding: 20px !important;
     }
 
-    /* ============ EXPANDER ============ */
     [data-testid="stExpander"] {
         border: 1px solid #2a2a3a !important;
         border-radius: 12px !important;
@@ -209,19 +198,16 @@ CSS_GLOBAL = """
         box-shadow: 0 2px 10px rgba(196,163,90,0.06) !important;
     }
 
-    /* ============ DATAFRAME ============ */
     [data-testid="stDataFrame"] {
         border-radius: 12px !important;
         border: 1px solid #2a2a3a !important;
     }
 
-    /* ============ ALERT ============ */
     .main [data-testid="stAlert"] p {
         font-size: 0.84rem !important;
         font-weight: 500 !important;
     }
 
-    /* ============ TABS ============ */
     .stTabs [data-baseweb="tab-list"] {
         gap: 4px !important;
         background: #13131a !important;
@@ -241,81 +227,14 @@ CSS_GLOBAL = """
         color: #0a0a0f !important;
     }
 
-    /* ============ DIVIDER ============ */
     .main hr {
         border: none !important;
         border-top: 1px solid #1e1e2a !important;
     }
 
-    /* ============ TOGGLE ============ */
     .main [data-testid="stToggle"] label span {
         color: #8a8a9a !important;
         font-size: 0.82rem !important;
-    }
-
-    /* ============ TOP NAV BAR ============ */
-    .top-nav {
-        display: flex;
-        justify-content: center;
-        gap: 8px;
-        padding: 10px 0;
-        margin-bottom: 16px;
-        animation: navSlide 0.5s ease-out both;
-    }
-    .top-nav a {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-decoration: none;
-        padding: 10px 20px;
-        border-radius: 12px;
-        background: #13131a;
-        border: 1px solid #2a2a3a;
-        transition: all 0.25s ease;
-        min-width: 80px;
-    }
-    .top-nav a:hover {
-        background: #1e1e2a;
-        border-color: #c4a35a;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 14px rgba(196,163,90,0.12);
-    }
-    .top-nav a.active {
-        background: linear-gradient(135deg, #c4a35a, #a08030);
-        border-color: transparent;
-    }
-    .top-nav a .nav-icon {
-        font-size: 1.3rem;
-        margin-bottom: 4px;
-    }
-    .top-nav a .nav-label {
-        font-family: 'Poppins', sans-serif;
-        font-size: 0.65rem;
-        font-weight: 600;
-        color: #8a8a9a;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-    }
-    .top-nav a.active .nav-icon,
-    .top-nav a.active .nav-label {
-        color: #0a0a0f;
-    }
-    .top-nav a:not(.active) .nav-icon {
-        color: #c4a35a;
-    }
-
-    @keyframes navSlide {
-        from { opacity: 0; transform: translateY(-10px); }
-        to   { opacity: 1; transform: translateY(0); }
-    }
-
-    @media (max-width: 768px) {
-        .top-nav a {
-            padding: 8px 14px;
-            min-width: 65px;
-        }
-        .top-nav a .nav-icon { font-size: 1.1rem; }
-        .top-nav a .nav-label { font-size: 0.58rem; }
     }
 
 </style>
@@ -334,7 +253,6 @@ CSS_OPENING = """
         overflow: hidden;
     }
 
-    /* ============ COIN ANIMATION ============ */
     .coin-container {
         position: relative;
         width: 120px;
@@ -399,7 +317,6 @@ CSS_OPENING = """
         50%      { transform: translate(-50%, -50%) scale(1.15); opacity: 0.6; }
     }
 
-    /* ============ SPARKLE ============ */
     .sparkle {
         position: absolute;
         width: 6px;
@@ -418,7 +335,6 @@ CSS_OPENING = """
         50%      { opacity: 1; transform: translateY(-12px) scale(1); }
     }
 
-    /* ============ TEXT ============ */
     .opening-name {
         font-family: 'Poppins', sans-serif;
         font-size: 2rem;
@@ -471,22 +387,19 @@ CSS_OPENING = """
 
 
 def inject_css():
-    """Inject CSS global"""
     import streamlit as st
     st.markdown(CSS_GLOBAL, unsafe_allow_html=True)
 
 def inject_opening_css():
-    """Inject CSS opening screen"""
     import streamlit as st
     st.markdown(CSS_OPENING, unsafe_allow_html=True)
 
-def render_top_nav(active: str = "home"):
-    """Render top navigation bar"""
+def render_top_nav(active="home"):
     import streamlit as st
 
     nav_items = [
         {"icon": "🏠", "label": "Home", "page": "app.py", "key": "home"},
-        {"icon": "💰", "label": "KEUANGAN", "page": "pages/1_💰_KEUANGAN.py", "key": "KEUANGAN"},
+        {"icon": "💰", "label": "Keuangan", "page": "pages/1_💰_Kas.py", "key": "kas"},
         {"icon": "⚙️", "label": "Setting", "page": "pages/2_⚙️_Pengaturan.py", "key": "setting"},
     ]
 
