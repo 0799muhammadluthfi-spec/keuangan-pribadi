@@ -6,11 +6,13 @@ from utils.helpers import (
     WS_KAS, WS_PENGATURAN, KOLOM_KAS, KOLOM_PENGATURAN,
     load_data, safe_update, pastikan_kolom, rupiah,
     get_last_saldo, hitung_ringkasan,
-    get_sisa_hari_bulan_ini, hitung_hasil_bersih_bulanan,
-    get_gaji, get_tabungan, hitung_pengeluaran_tetap_bulanan,
-    hitung_beban_belum_bayar, hitung_saldo_siap_pakai,
-    hitung_batas_harian, hitung_pengeluaran_hari_ini,
-    get_status_batas_harian, get_pengaturan, to_float
+    get_sisa_hari_bulan_ini,
+    get_gaji, get_tabungan,
+    hitung_pengeluaran_tetap_bulanan,
+    hitung_beban_belum_bayar,
+    hitung_saldo_siap_pakai,
+    hitung_pengeluaran_hari_ini,
+    get_pengaturan, to_float
 )
 
 st.set_page_config(page_title="Keuangan Pribadi", page_icon="💰", layout="centered", initial_sidebar_state="collapsed")
@@ -25,8 +27,7 @@ if not st.session_state["opening_done"]:
     st.markdown("""
     <div class="opening-wrapper">
         <div class="coin-container">
-            <div class="coin-ring"></div>
-            <div class="coin"></div>
+            <div class="coin-ring"></div><div class="coin"></div>
             <div class="sparkle"></div><div class="sparkle"></div>
             <div class="sparkle"></div><div class="sparkle"></div>
         </div>
@@ -125,52 +126,24 @@ if aktif_batas:
     b4.metric("💵 Sisa Batas Hari Ini", rupiah(sisa))
 
     st.caption(
-        f"Saldo ({rupiah(last_seluruh)}) "
-        f"- beban ({rupiah(beban_sisa)}) "
-        f"- tabungan ({rupiah(tabungan_val)}) "
-        f"= {rupiah(saldo_siap)} / {sisa_hari} hari"
-    )
-
-    # WARNING BERDASARKAN SISA BATAS
-    if batas <= 0:
-        st.error("❌ Tidak ada budget harian tersisa!")
-    else:
-        persen = (sisa / batas) * 100 if batas > 0 else 0
-
-        if keluar <= 0:
-            st.success(f"✅ Belum ada pengeluaran hari ini. Batas penuh {rupiah(batas)}")
-        elif sisa < 0:
-            st.error(f"🚨 Melebihi batas harian sebesar {rupiah(abs(sisa))}")
-        elif persen < 20:
-            st.error(f"❌ Sisa batas hari ini tinggal {rupiah(sisa)} ({persen:.0f}%)")
-        elif persen < 50:
-            st.warning(f"⚠️ Sisa batas hari ini {rupiah(sisa)} ({persen:.0f}%)")
-        else:
-            st.success(f"✅ Hari ini masih aman. Sisa batas {rupiah(sisa)} ({persen:.0f}%)")
-
-    st.caption(
         f"Saldo ({rupiah(last_seluruh)}) - beban ({rupiah(beban_sisa)}) "
         f"- tabungan ({rupiah(tabungan_val)}) = {rupiah(saldo_siap)} / {sisa_hari} hari"
     )
 
-    if status == "bahaya":
-        st.error(pesan)
-    elif status == "merah":
-        st.error(pesan)
-    elif status == "kuning":
-        st.warning(pesan)
-    elif status == "hijau":
-        st.success(pesan)
+    if batas <= 0:
+        st.error("❌ Tidak ada budget harian tersisa!")
+    elif keluar <= 0:
+        st.success(f"✅ Belum ada pengeluaran hari ini. Batas penuh {rupiah(batas)}")
+    elif sisa < 0:
+        st.error(f"🚨 Melebihi batas harian sebesar {rupiah(abs(sisa))}")
+    elif (sisa / batas * 100) < 20:
+        st.error(f"❌ Sisa batas tinggal {rupiah(sisa)} ({sisa/batas*100:.0f}%)")
+    elif (sisa / batas * 100) < 50:
+        st.warning(f"⚠️ Sisa batas {rupiah(sisa)} ({sisa/batas*100:.0f}%)")
+    else:
+        st.success(f"✅ Masih aman. Sisa {rupiah(sisa)} ({sisa/batas*100:.0f}%)")
 
 st.divider()
-
-# ── WARNING SALDO SIAP PAKAI ──
-saldo_siap = hitung_saldo_siap_pakai(df_kas, df_pg)
-if saldo_siap < 0:
-    st.error(
-        f"🚨 **PERINGATAN: Saldo siap pakai MINUS {rupiah(abs(saldo_siap))}!** "
-        f"Total saldo tidak cukup untuk menutup beban tetap dan tabungan."
-    )
 
 # ── INFO BULANAN ──
 gaji = get_gaji(df_pg)
