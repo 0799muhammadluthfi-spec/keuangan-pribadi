@@ -3,7 +3,6 @@
 # ==========================================
 import streamlit as st
 import pandas as pd
-from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
 
 from utils.css_styles import inject_css, render_top_nav
@@ -26,7 +25,7 @@ from utils.helpers import (
     get_last_saldo,
     hitung_ringkasan,
     get_selisih_aktif,
-    cek_warning_harian,
+    get_sisa_hari_bulan_ini,
     today_wita
 )
 
@@ -90,12 +89,35 @@ r2c3.metric("🛒 Shopee", rupiah(last_shopee))
 
 st.divider()
 
-# ── WARNING HARIAN ──
-level, pesan = cek_warning_harian(df_kas, df_pg)
-if level == "bahaya":
-    st.error(pesan)
-elif level == "warning":
-    st.warning(pesan)
+# ── BATAS HARIAN ──
+aktif_batas = st.toggle(
+    "📅 Aktifkan Batas Harian",
+    value=False,
+    key="toggle_batas_kas"
+)
+
+if aktif_batas:
+    sisa_hari = get_sisa_hari_bulan_ini()
+
+    if last_kas > 0 and sisa_hari > 0:
+        batas_harian = last_kas / sisa_hari
+
+        st.metric("💰 Batas Harian", rupiah(batas_harian))
+        st.caption(
+            f"Saldo di tangan ({rupiah(last_kas)}) dibagi "
+            f"sisa {sisa_hari} hari"
+        )
+
+        if batas_harian <= 0:
+            st.error("❌ Saldo habis!")
+        elif batas_harian < 50000:
+            st.warning(
+                f"⚠️ Batas harian tinggal **{rupiah(batas_harian)}**"
+            )
+    else:
+        st.info("Belum ada saldo untuk menghitung batas harian.")
+
+    st.divider()
 
 # ── ALERT SELISIH AKTIF ──
 ada_selisih, nilai_selisih, tgl_selisih = get_selisih_aktif(df_cek)
@@ -130,6 +152,9 @@ if cek_selisih:
         key="input_cek_fisik"
     )
 
+    if kas_fisik > 0:
+        st.caption(f"💰 {rupiah(kas_fisik)}")
+
     selisih = last_kas - kas_fisik
 
     if selisih > 0.5:
@@ -139,8 +164,12 @@ if cek_selisih:
     else:
         st.success("✅ **PAS / Rp 0**")
 
-    if st.button("💾 Simpan Hasil Pengecekan", type="primary",
-                 use_container_width=True, key="btn_simpan_cek"):
+    if st.button(
+        "💾 Simpan Hasil Pengecekan",
+        type="primary",
+        use_container_width=True,
+        key="btn_simpan_cek"
+    ):
         next_no_cek = get_next_no(df_cek)
         status = "YA" if abs(selisih) > 0.5 else "TIDAK"
 
