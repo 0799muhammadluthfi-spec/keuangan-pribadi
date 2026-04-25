@@ -366,21 +366,18 @@ CSS_OPENING = """
     }
     .opening-subtitle {
         font-family: 'Poppins', sans-serif;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: 400;
         color: #5a5a6a;
         margin: 0;
-        animation: textUp 0.7s ease-out 1.0s forwards;
+        animation: textUp 0.7s ease-out 1.0s forwards,
+                   subtitlePulse 2s ease-in-out 2s infinite;
         opacity: 0;
     }
 
-    @keyframes textUp {
-        from { opacity: 0; transform: translateY(18px); filter: blur(4px); }
-        to   { opacity: 1; transform: translateY(0); filter: blur(0); }
-    }
-    @keyframes lineGrow {
-        from { opacity: 0; width: 0; }
-        to   { opacity: 1; width: 120px; }
+    @keyframes subtitlePulse {
+        0%, 100% { opacity: 0.6; }
+        50% { opacity: 1; color: #c4a35a; }
     }
 </style>
 """
