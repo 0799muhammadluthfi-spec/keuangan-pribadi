@@ -53,28 +53,15 @@ if not st.session_state["opening_done"]:
             <p class="opening-name">M. Luthfi Renaldi</p>
             <p class="opening-tagline">Financial Tracker</p>
             <div class="opening-line"></div>
-            <p class="opening-subtitle">Atur keuanganmu dengan cerdas</p>
+            <p class="opening-subtitle">Ketuk di mana saja untuk masuk</p>
         </div>
         """,
         unsafe_allow_html=True
     )
 
-    st.markdown(
-        """
-        <div style="text-align:center; margin-top:-10px; margin-bottom:15px;">
-            <p style="font-family:'Poppins',sans-serif; font-size:0.75rem; color:#8a8a9a;">
-                Ketuk ikon untuk masuk
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    c1, c2, c3 = st.columns([1, 1, 1])
-    with c2:
-        if st.button("💰", key="btn_open_icon", use_container_width=True, type="primary"):
-            st.session_state["opening_done"] = True
-            st.rerun()
+    if st.button("🚀 Masuk", type="primary", use_container_width=True, key="btn_masuk_open"):
+        st.session_state["opening_done"] = True
+        st.rerun()
 
     st.stop()
 
