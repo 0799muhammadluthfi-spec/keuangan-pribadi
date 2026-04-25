@@ -202,12 +202,26 @@ def hitung_pengeluaran_hari_ini(df_kas):
     try:
         if df_kas.empty:
             return 0.0
+
         d = df_kas[df_kas["No"] != "-"].copy()
+
         if "Jenis_Transaksi" not in d.columns:
             return 0.0
+
         hari_ini = today_wita().strftime("%d/%m/%Y")
         d["_tgl"] = d["Tanggal"].astype(str).str.strip().str.replace("-", "/", regex=False)
-        d_h = d[(d["_tgl"] == hari_ini) & (d["Jenis_Transaksi"] == "KELUAR")]
+
+        d_h = d[
+            (d["_tgl"] == hari_ini) &
+            (d["Jenis_Transaksi"] == "KELUAR")
+        ].copy()
+
+        # Abaikan pembayaran pengeluaran tetap
+        if "Catatan" in d_h.columns:
+            d_h = d_h[
+                ~d_h["Catatan"].astype(str).str.upper().str.contains("PENGELUARAN TETAP", na=False)
+            ]
+
         return d_h["Nominal"].apply(to_float).sum()
     except:
         return 0.0
