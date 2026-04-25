@@ -35,14 +35,13 @@ if not st.session_state["opening_done"]:
         <p class="opening-name">M. Luthfi Renaldi</p>
         <p class="opening-tagline">Financial Tracker</p>
         <div class="opening-line"></div>
+        <p class="opening-subtitle">Selamat datang</p>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown('<div class="btn-masuk-wrapper">', unsafe_allow_html=True)
     if st.button("M A S U K", type="secondary", use_container_width=True, key="btn_masuk"):
         st.session_state["opening_done"] = True
         st.switch_page("pages/1_💰_Kas.py")
-    st.markdown('</div>', unsafe_allow_html=True)
 
     st.stop()
 
