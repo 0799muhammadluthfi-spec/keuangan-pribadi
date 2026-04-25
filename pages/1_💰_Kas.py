@@ -43,12 +43,18 @@ df_pg = pastikan_kolom(df_pg, KOLOM_PENGATURAN)
 df_cek = load_data(conn, WS_PENGECEKAN)
 df_cek = pastikan_kolom(df_cek, KOLOM_PENGECEKAN)
 
-st.markdown(
-    '<div style="text-align:center;padding:5px 0;">'
-    '<p style="font-family:\'Poppins\',sans-serif;font-size:1.3rem;font-weight:700;color:#f5f5f5;margin:0;text-align:center;">💰 Keuangan</p>'
-    '</div>',
-    unsafe_allow_html=True
-)
+st.markdown("""
+<div style="text-align:center; padding:10px 0 5px 0;">
+    <p style="font-family:'Poppins',sans-serif; font-size:0.7rem; font-weight:500;
+              color:#5a5a6a; text-transform:uppercase; letter-spacing:0.1em; margin:0; text-align:center;">
+        KEUANGAN PRIBADI</p>
+    <p style="font-family:'Poppins',sans-serif; font-size:1.4rem; font-weight:700;
+              color:#f5f5f5; margin:4px 0 0 0; text-align:center;">
+        Hai, Luthfi 👋</p>
+</div>
+""", unsafe_allow_html=True)
+
+st.divider()
 
 # ── INPUT TRANSAKSI DULU SESUAI PERMINTAAN ──
 rc = st.session_state["kas_rc"]
