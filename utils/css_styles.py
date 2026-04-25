@@ -165,16 +165,13 @@ CSS_OPENING = """
 <style>
     .opening-wrapper {
         display: flex; flex-direction: column; align-items: center;
-        justify-content: center; min-height: 100vh; text-align: center;
+        justify-content: center; min-height: 90vh; text-align: center;
         padding: 20px; overflow: hidden;
-        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        background: #0a0a0f; z-index: 9998;
     }
 
     .coin-container {
         position: relative; width: 120px; height: 120px; margin-bottom: 30px;
         animation: coinEntry 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; opacity: 0;
-        cursor: pointer;
     }
     .coin {
         width: 100px; height: 100px; border-radius: 50%;
@@ -235,41 +232,42 @@ CSS_OPENING = """
         margin: 0 auto 20px auto;
         animation: lineGrow 0.8s ease-out 0.8s forwards; opacity: 0;
     }
-    .opening-subtitle {
-        font-family: 'Poppins', sans-serif; font-size: 0.75rem; font-weight: 400;
-        color: #5a5a6a; margin: 0;
-        animation: textUp 0.7s ease-out 1.0s forwards, subtitlePulse 2s ease-in-out 2s infinite;
-        opacity: 0;
-    }
 
     @keyframes textUp {
         from { opacity: 0; transform: translateY(18px); filter: blur(4px); }
         to   { opacity: 1; transform: translateY(0); filter: blur(0); }
     }
     @keyframes lineGrow { from { opacity: 0; width: 0; } to { opacity: 1; width: 120px; } }
-    @keyframes subtitlePulse {
-        0%, 100% { opacity: 0.6; }
-        50% { opacity: 1; color: #c4a35a; }
+
+    /* Tombol masuk elegant */
+    .btn-masuk-wrapper {
+        animation: textUp 0.7s ease-out 1.2s forwards;
+        opacity: 0;
+        margin-top: 10px;
     }
 
-    /* Tombol transparan full screen */
-    .opening-tap-area {
-        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        z-index: 9999; cursor: pointer;
+    .btn-masuk-wrapper .stButton > button {
+        background: transparent !important;
+        border: 2px solid #c4a35a !important;
+        color: #c4a35a !important;
+        font-family: 'Poppins', sans-serif !important;
+        font-size: 0.85rem !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.12em !important;
+        padding: 12px 40px !important;
+        border-radius: 50px !important;
+        transition: all 0.3s ease !important;
+        text-transform: uppercase !important;
     }
 
-    /* Sembunyikan tombol streamlit di opening */
-    .opening-hide-btn .stButton > button {
-        position: fixed !important;
-        top: 0 !important; left: 0 !important;
-        width: 100vw !important; height: 100vh !important;
-        opacity: 0 !important; z-index: 9999 !important;
-        cursor: pointer !important;
-        border: none !important; background: transparent !important;
+    .btn-masuk-wrapper .stButton > button:hover {
+        background: linear-gradient(135deg, #c4a35a, #a08030) !important;
+        color: #0a0a0f !important;
+        box-shadow: 0 0 25px rgba(196,163,90,0.3) !important;
+        transform: scale(1.05) !important;
     }
 </style>
 """
-
 
 def inject_css():
     import streamlit as st
