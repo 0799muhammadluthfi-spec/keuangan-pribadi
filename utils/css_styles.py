@@ -164,29 +164,66 @@ CSS_GLOBAL = """
 CSS_OPENING = """
 <style>
     .opening-wrapper {
-        display: flex; flex-direction: column; align-items: center;
-        justify-content: center; min-height: 90vh; text-align: center;
-        padding: 20px; overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        text-align: center;
+        padding: 20px;
+        overflow: hidden;
+        position: fixed;
+        inset: 0;
+        background: #0a0a0f;
+        z-index: 9998;
+    }
+
+    /* block container full viewport saat opening */
+    .main .block-container {
+        max-width: 100% !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
     }
 
     .coin-container {
-        position: relative; width: 120px; height: 120px; margin-bottom: 30px;
-        animation: coinEntry 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; opacity: 0;
+        position: relative;
+        width: 120px;
+        height: 120px;
+        margin-bottom: 28px;
+        animation: coinEntry 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        opacity: 0;
     }
+
     .coin {
-        width: 100px; height: 100px; border-radius: 50%;
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
         background: linear-gradient(135deg, #c4a35a, #e8d48b, #a08030, #c4a35a);
         background-size: 300% 300%;
         animation: coinSpin 3s ease-in-out infinite, coinShine 4s linear infinite;
         box-shadow: 0 0 30px rgba(196,163,90,0.3), inset 0 0 20px rgba(255,255,255,0.1);
-        display: flex; align-items: center; justify-content: center;
-        margin: 10px auto; position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 10px auto;
+        position: relative;
     }
-    .coin::after { content: '💰'; font-size: 2.5rem; animation: coinPulse 2s ease-in-out infinite; }
+
+    .coin::after {
+        content: '💰';
+        font-size: 2.5rem;
+        animation: coinPulse 2s ease-in-out infinite;
+    }
+
     .coin-ring {
-        position: absolute; width: 115px; height: 115px;
-        border: 2px solid rgba(196,163,90,0.3); border-radius: 50%;
-        top: 50%; left: 50%; transform: translate(-50%, -50%);
+        position: absolute;
+        width: 115px;
+        height: 115px;
+        border: 2px solid rgba(196,163,90,0.3);
+        border-radius: 50%;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
         animation: ringPulse 2.5s ease-in-out infinite;
     }
 
@@ -195,14 +232,30 @@ CSS_OPENING = """
         60%  { opacity: 1; transform: scale(1.1) translateY(-5px) rotate(5deg); }
         100% { opacity: 1; transform: scale(1) translateY(0) rotate(0deg); }
     }
-    @keyframes coinSpin { 0%, 100% { transform: rotateY(0deg); } 50% { transform: rotateY(15deg); } }
-    @keyframes coinShine { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-    @keyframes coinPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-    @keyframes ringPulse { 0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.3; } 50% { transform: translate(-50%, -50%) scale(1.15); opacity: 0.6; } }
+    @keyframes coinSpin {
+        0%, 100% { transform: rotateY(0deg); }
+        50%      { transform: rotateY(15deg); }
+    }
+    @keyframes coinShine {
+        0%   { background-position: 0% 50%; }
+        50%  { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    @keyframes coinPulse {
+        0%, 100% { transform: scale(1); }
+        50%      { transform: scale(1.1); }
+    }
+    @keyframes ringPulse {
+        0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.3; }
+        50%      { transform: translate(-50%, -50%) scale(1.15); opacity: 0.6; }
+    }
 
     .sparkle {
-        position: absolute; width: 6px; height: 6px;
-        background: #c4a35a; border-radius: 50%;
+        position: absolute;
+        width: 6px;
+        height: 6px;
+        background: #c4a35a;
+        border-radius: 50%;
         animation: sparkleFloat 3s ease-in-out infinite;
     }
     .sparkle:nth-child(1) { top: -5px; left: 20px; animation-delay: 0s; }
@@ -216,37 +269,74 @@ CSS_OPENING = """
     }
 
     .opening-name {
-        font-family: 'Poppins', sans-serif; font-size: 2rem; font-weight: 800;
-        color: #f5f5f5; margin: 0 0 6px 0;
-        animation: textUp 0.7s ease-out 0.4s forwards; opacity: 0;
+        font-family: 'Poppins', sans-serif;
+        font-size: 2rem;
+        font-weight: 800;
+        color: #f5f5f5;
+        margin: 0 0 6px 0;
+        animation: textUp 0.7s ease-out 0.4s forwards;
+        opacity: 0;
     }
+
     .opening-tagline {
-        font-family: 'Poppins', sans-serif; font-size: 0.95rem; font-weight: 400;
-        color: #c4a35a; letter-spacing: 0.15em; text-transform: uppercase;
+        font-family: 'Poppins', sans-serif;
+        font-size: 0.95rem;
+        font-weight: 400;
+        color: #c4a35a;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
         margin: 0 0 20px 0;
-        animation: textUp 0.7s ease-out 0.6s forwards; opacity: 0;
+        animation: textUp 0.7s ease-out 0.6s forwards;
+        opacity: 0;
     }
+
     .opening-line {
-        width: 0; height: 2px;
+        width: 0;
+        height: 2px;
         background: linear-gradient(90deg, transparent, #c4a35a, transparent);
         margin: 0 auto 20px auto;
-        animation: lineGrow 0.8s ease-out 0.8s forwards; opacity: 0;
+        animation: lineGrow 0.8s ease-out 0.8s forwards;
+        opacity: 0;
+    }
+
+    .opening-subtitle {
+        font-family: 'Poppins', sans-serif;
+        font-size: 0.75rem;
+        font-weight: 400;
+        color: #5a5a6a;
+        margin: 0;
+        animation: textUp 0.7s ease-out 1.0s forwards, subtitlePulse 2s ease-in-out 2s infinite;
+        opacity: 0;
     }
 
     @keyframes textUp {
         from { opacity: 0; transform: translateY(18px); filter: blur(4px); }
         to   { opacity: 1; transform: translateY(0); filter: blur(0); }
     }
-    @keyframes lineGrow { from { opacity: 0; width: 0; } to { opacity: 1; width: 120px; } }
 
-    /* Tombol masuk elegant */
-    .btn-masuk-wrapper {
-        animation: textUp 0.7s ease-out 1.2s forwards;
-        opacity: 0;
-        margin-top: 10px;
+    @keyframes lineGrow {
+        from { opacity: 0; width: 0; }
+        to   { opacity: 1; width: 120px; }
     }
 
-    .btn-masuk-wrapper .stButton > button {
+    @keyframes subtitlePulse {
+        0%, 100% { opacity: 0.6; }
+        50%      { opacity: 1; color: #c4a35a; }
+    }
+
+    /* tombol fixed agar selalu terlihat */
+    div[data-testid="stButton"] {
+        position: fixed !important;
+        left: 50% !important;
+        bottom: 7vh !important;
+        transform: translateX(-50%) !important;
+        width: min(320px, calc(100vw - 2rem)) !important;
+        z-index: 10000 !important;
+        margin: 0 !important;
+    }
+
+    div[data-testid="stButton"] > button {
+        width: 100% !important;
         background: transparent !important;
         border: 2px solid #c4a35a !important;
         color: #c4a35a !important;
@@ -258,13 +348,27 @@ CSS_OPENING = """
         border-radius: 50px !important;
         transition: all 0.3s ease !important;
         text-transform: uppercase !important;
+        animation: btnFadeIn 0.8s ease-out 1.2s forwards !important;
+        opacity: 0;
     }
 
-    .btn-masuk-wrapper .stButton > button:hover {
+    div[data-testid="stButton"] > button:hover {
         background: linear-gradient(135deg, #c4a35a, #a08030) !important;
         color: #0a0a0f !important;
         box-shadow: 0 0 25px rgba(196,163,90,0.3) !important;
-        transform: scale(1.05) !important;
+        transform: scale(1.02) !important;
+    }
+
+    @keyframes btnFadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 768px) {
+        div[data-testid="stButton"] {
+            width: min(300px, calc(100vw - 1.5rem)) !important;
+            bottom: 6vh !important;
+        }
     }
 </style>
 """
