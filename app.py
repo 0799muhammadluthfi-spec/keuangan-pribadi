@@ -39,12 +39,10 @@ if not st.session_state["opening_done"]:
     </div>
     """, unsafe_allow_html=True)
 
-    # Tombol transparan full layar
-    st.markdown('<div class="opening-hide-btn">', unsafe_allow_html=True)
-    if st.button(".", key="btn_open_hidden"):
+    if st.button("Ketuk untuk masuk", type="primary", use_container_width=True, key="btn_masuk"):
         st.session_state["opening_done"] = True
         st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+
     st.stop()
 
 # ── NAVIGATION ──
@@ -59,12 +57,10 @@ df_pg = pastikan_kolom(df_pg, KOLOM_PENGATURAN)
 # ── HEADER ──
 st.markdown("""
 <div style="text-align:center; padding:10px 0 5px 0;">
-    <p style="font-family:'Poppins',sans-serif; font-size:0.7rem; font-weight:500;
-              color:#5a5a6a; text-transform:uppercase; letter-spacing:0.1em; margin:0; text-align:center;">
-        REKAP KEUANGAN</p>
-    <p style="font-family:'Poppins',sans-serif; font-size:1.4rem; font-weight:700;
-              color:#f5f5f5; margin:4px 0 0 0; text-align:center;">
-        Hai, Luthfi 👋</p>
+    <p style="font-family:'Poppins',sans-serif; font-size:1.2rem; font-weight:700;
+              color:#f5f5f5; margin:0; text-align:center;">
+        📊 Rekap Keuangan
+    </p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -142,7 +138,7 @@ if aktif_batas:
 
     b1, b2 = st.columns(2)
     b1.metric("🎯 Batas Harian", rupiah(batas))
-    b2.metric("💵 Sisa Batas Hari Ini", rupiah(sisa))
+    b2.metric("💵 Sisa Batas", rupiah(sisa))
     b3, b4 = st.columns(2)
     b3.metric("📤 Keluar Hari Ini", rupiah(keluar))
     b4.metric("💰 Saldo Siap Pakai", rupiah(saldo_siap))
@@ -157,15 +153,14 @@ if aktif_batas:
     elif keluar <= 0:
         st.success(f"✅ Belum ada pengeluaran hari ini. Batas penuh {rupiah(batas)}")
     elif sisa < 0:
-        st.error(f"🚨 Melebihi batas harian sebesar {rupiah(abs(sisa))}")
+        st.error(f"🚨 Melebihi batas sebesar {rupiah(abs(sisa))}")
     elif (sisa / batas * 100) < 20:
-        st.error(f"❌ Sisa batas tinggal {rupiah(sisa)} ({sisa/batas*100:.0f}%)")
+        st.error(f"❌ Sisa tinggal {rupiah(sisa)} ({sisa/batas*100:.0f}%)")
     elif (sisa / batas * 100) < 50:
-        st.warning(f"⚠️ Sisa batas {rupiah(sisa)} ({sisa/batas*100:.0f}%)")
+        st.warning(f"⚠️ Sisa {rupiah(sisa)} ({sisa/batas*100:.0f}%)")
     else:
-        st.success(f"✅ Masih aman. Sisa {rupiah(sisa)} ({sisa/batas*100:.0f}%)")
+        st.success(f"✅ Aman. Sisa {rupiah(sisa)} ({sisa/batas*100:.0f}%)")
 
-# ── FOOTER ──
 st.markdown("""
 <div style="text-align:center; padding:30px 0 10px 0; border-top:1px solid #1e1e2a; margin-top:20px;">
     <p style="font-family:'Poppins',sans-serif; font-size:0.55rem; color:#3a3a4a; margin:0; text-align:center;">
