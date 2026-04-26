@@ -131,9 +131,10 @@ if aktif_batas != batas_aktif_default:
     safe_update(conn, WS_PENGATURAN, df_u)
 
 if aktif_batas:
-    saldo_siap = hitung_saldo_siap_pakai(df_kas, df_pg)
-    keluar = hitung_pengeluaran_hari_ini(df_kas)
-    batas = saldo_siap / sisa_hari if sisa_hari > 0 and saldo_siap > 0 else 0.0
+    saldo_siap = to_float(hitung_saldo_siap_pakai(df_kas, df_pg))
+    keluar = to_float(hitung_pengeluaran_hari_ini(df_kas))
+    batas = (saldo_siap / sisa_hari) if (sisa_hari > 0 and saldo_siap > 0) else 0.0
+    batas = to_float(batas)
     sisa = batas - keluar
 
     b1, b2 = st.columns(2)
