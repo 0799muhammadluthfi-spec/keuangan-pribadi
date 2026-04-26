@@ -4,7 +4,7 @@ from streamlit_gsheets import GSheetsConnection
 from utils.css_styles import inject_css, inject_opening_css, render_top_nav
 from utils.helpers import (
     WS_KAS, WS_PENGATURAN, KOLOM_KAS, KOLOM_PENGATURAN,
-    load_data, safe_update, pastikan_kolom, rupiah,
+    load_data, safe_update, pastikan_kolom, rupiah, to_float,
     get_last_saldo, hitung_ringkasan,
     get_sisa_hari_bulan_ini,
     get_gaji, get_tabungan,
