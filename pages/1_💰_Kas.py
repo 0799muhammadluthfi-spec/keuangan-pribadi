@@ -160,12 +160,13 @@ if not df_pg_batas.empty:
     batas_aktif = str(df_pg_batas.iloc[0]["Status"]).strip().upper() == "AKTIF"
 
 if batas_aktif:
-    saldo_siap = float(hitung_saldo_siap_pakai(df_kas, df_pg) or 0)
+    saldo_siap = to_float(hitung_saldo_siap_pakai(df_kas, df_pg))
     sisa_hari = int(get_sisa_hari_bulan_ini() or 1)
-    keluar_val = float(hitung_pengeluaran_hari_ini(df_kas) or 0)
+    keluar_val = to_float(hitung_pengeluaran_hari_ini(df_kas))
 
-    batas_val = float(saldo_siap / sisa_hari) if sisa_hari > 0 and saldo_siap > 0 else 0.0
-    sisa_val = float(batas_val) - float(keluar_val)
+    batas_val = (saldo_siap / sisa_hari) if (sisa_hari > 0 and saldo_siap > 0) else 0.0
+    batas_val = to_float(batas_val)
+    sisa_val = batas_val - keluar_val
 
     st.subheader("📅 Batas Harian")
 
