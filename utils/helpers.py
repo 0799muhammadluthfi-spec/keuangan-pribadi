@@ -82,14 +82,51 @@ def get_jumlah_hari_bulan_ini():
     h = today_wita()
     return calendar.monthrange(h.year, h.month)[1]
 
-def get_sisa_hari_bulan_ini():
+def get_tanggal_mulai_siklus():
+    """Siklus dimulai tanggal 26 bulan lalu"""
     h = today_wita()
-    total = calendar.monthrange(h.year, h.month)[1]
-    return total - h.day + 1
+    if h.day >= 26:
+        # sudah masuk siklus baru
+        return h.replace(day=26)
+    else:
+        # masih siklus bulan lalu
+        if h.month == 1:
+            return h.replace(year=h.year - 1, month=12, day=26)
+        else:
+            return h.replace(month=h.month - 1, day=26)
+
+def get_tanggal_akhir_siklus():
+    """Siklus berakhir tanggal 25 bulan ini atau bulan depan"""
+    h = today_wita()
+    if h.day >= 26:
+        # akhir siklus = tanggal 25 bulan depan
+        if h.month == 12:
+            return h.replace(year=h.year + 1, month=1, day=25)
+        else:
+            return h.replace(month=h.month + 1, day=25)
+    else:
+        # akhir siklus = tanggal 25 bulan ini
+        return h.replace(day=25)
+
+def get_sisa_hari_bulan_ini():
+    """Sisa hari dalam siklus (sampai tanggal 25)"""
+    h = today_wita()
+    akhir = get_tanggal_akhir_siklus()
+    sisa = (akhir - h).days + 1
+    if sisa < 0:
+        sisa = 0
+    return sisa
+
+def get_jumlah_hari_bulan_ini():
+    """Total hari dalam siklus (26 s/d 25)"""
+    mulai = get_tanggal_mulai_siklus()
+    akhir = get_tanggal_akhir_siklus()
+    return (akhir - mulai).days + 1
 
 def get_bulan_ini_str():
-    h = today_wita()
-    return f"{h.year}-{h.month:02d}"
+    """Bulan siklus = bulan dari tanggal akhir siklus"""
+    akhir = get_tanggal_akhir_siklus()
+    return f"{akhir.year}-{akhir.month:02d}"
 
 def get_jumlah_minggu_bulan_ini():
     if get_jumlah_hari_bulan_ini() <= 28:
